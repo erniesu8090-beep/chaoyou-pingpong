@@ -1304,6 +1304,69 @@ function openMemberDetailModal(memberId) {
         document.getElementById("md-best-partner").style.color = "var(--text-muted)";
     }
 
+    // 3.2. 設定姓名修改編輯器
+    const nameDisplayBox = document.getElementById("md-name-display-box");
+    const nameEditBox = document.getElementById("md-name-edit-box");
+    const nameInput = document.getElementById("md-name-input");
+    
+    nameDisplayBox.style.display = "flex";
+    nameEditBox.style.display = "none";
+    nameInput.value = member.name;
+
+    document.getElementById("md-edit-name-btn").onclick = (e) => {
+        e.stopPropagation();
+        nameDisplayBox.style.display = "none";
+        nameEditBox.style.display = "flex";
+        nameInput.focus();
+        nameInput.select();
+    };
+
+    document.getElementById("md-cancel-name-btn").onclick = (e) => {
+        e.stopPropagation();
+        nameDisplayBox.style.display = "flex";
+        nameEditBox.style.display = "none";
+    };
+
+    document.getElementById("md-save-name-btn").onclick = (e) => {
+        e.stopPropagation();
+        const newName = nameInput.value.trim();
+        if (!newName) {
+            alert("請輸入有效的會員姓名！");
+            return;
+        }
+
+        const oldName = member.name;
+        if (newName === oldName) {
+            nameDisplayBox.style.display = "flex";
+            nameEditBox.style.display = "none";
+            return;
+        }
+
+        // 檢查是否有同名會員
+        const isDuplicate = state.members.some(m => m.id !== member.id && m.name.toLowerCase() === newName.toLowerCase());
+        if (isDuplicate) {
+            alert("已存在相同姓名的會員，請使用其他姓名！");
+            return;
+        }
+
+        // 更新姓名
+        member.name = newName;
+        saveToStorage();
+
+        // 更新 Modal 內的文字與頭像字首
+        document.getElementById("md-name").innerText = newName;
+        document.getElementById("md-avatar").innerText = newName.charAt(0);
+
+        nameDisplayBox.style.display = "flex";
+        nameEditBox.style.display = "none";
+
+        // 重新整理視圖
+        renderDashboard();
+        renderMembers();
+
+        alert(`已成功將姓名「${oldName}」修改為「${newName}」！`);
+    };
+
     // 3.5. 設定積分修改編輯器
     const displayBox = document.getElementById("md-rating-display-box");
     const editBox = document.getElementById("md-rating-edit-box");
