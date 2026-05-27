@@ -1,0 +1,1250 @@
+/* ==========================================================================
+   朝友桌球分級小程式 - 極致科技深色玻璃微光樣式 (Premium Glassmorphism Style)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+
+/* === 1. 核心變數與設計系統 === */
+:root {
+    --font-primary: 'Outfit', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    
+    /* 配色系統 */
+    --bg-main: #070a13;
+    --bg-gradient: linear-gradient(135deg, #05070e 0%, #0d1222 50%, #070a13 100%);
+    --bg-glass: rgba(17, 24, 39, 0.45);
+    --bg-glass-hover: rgba(30, 41, 59, 0.6);
+    --border-glass: rgba(255, 255, 255, 0.08);
+    --border-glass-glow: rgba(59, 130, 246, 0.35);
+    
+    /* 霓虹發光色 */
+    --accent-emerald: #10b981;
+    --accent-blue: #3b82f6;
+    --accent-purple: #8b5cf6;
+    --accent-magenta: #ec4899;
+    --accent-gold: #f59e0b;
+    --accent-crimson: #ef4444;
+    
+    /* 文字顏色 */
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    
+    /* 陰影 */
+    --shadow-premium: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px 0 rgba(59, 130, 246, 0.2);
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* === 2. 基礎重置與排版 === */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-primary);
+    background: var(--bg-main);
+    background-image: var(--bg-gradient);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* 捲軸美化 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* === 3. 毛玻璃核心公用類 === */
+.glass-panel {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    box-shadow: var(--shadow-premium);
+    transition: var(--transition-smooth);
+}
+
+.glass-panel:hover {
+    border-color: rgba(255, 255, 255, 0.13);
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    transition: var(--transition-smooth);
+}
+
+.glass-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+/* === 4. 頂部導航欄與 Layout === */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(7, 10, 19, 0.7);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0 24px;
+}
+
+.header-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    height: 70px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo svg {
+    fill: url(#logoGrad);
+}
+
+nav {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition-smooth);
+}
+
+.nav-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-btn.active {
+    color: #ffffff;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    min-height: calc(100vh - 70px);
+}
+
+/* === 5. 頁面視圖動畫切換 === */
+.view-panel {
+    display: none;
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.view-panel.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* === 6. 控制面板 Dashboard 樣式 === */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent-blue);
+}
+
+.stat-card.emerald::before { background: var(--accent-emerald); }
+.stat-card.purple::before { background: var(--accent-purple); }
+.stat-card.gold::before { background: var(--accent-gold); }
+
+.stat-val {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 6px 0 2px 0;
+    color: var(--text-primary);
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.stat-icon {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    opacity: 0.15;
+    color: #ffffff;
+}
+
+/* 名人堂排行榜 Leaderboard */
+.leaderboard-list {
+    margin-top: 15px;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: var(--transition-smooth);
+}
+
+.leaderboard-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    transform: scale(1.01);
+}
+
+.leaderboard-item.rank-1 {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border-color: rgba(245, 158, 11, 0.25);
+}
+
+.leaderboard-item.rank-2 {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+.leaderboard-item.rank-3 {
+    background: linear-gradient(90deg, rgba(180, 83, 9, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border-color: rgba(180, 83, 9, 0.2);
+}
+
+.rank-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    margin-right: 14px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text-secondary);
+}
+
+.rank-1 .rank-badge {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #070a13;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.rank-2 .rank-badge {
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    color: #070a13;
+    box-shadow: 0 0 10px rgba(203, 213, 225, 0.3);
+}
+
+.rank-3 .rank-badge {
+    background: linear-gradient(135deg, #b45309 0%, #78350f 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(180, 83, 9, 0.3);
+}
+
+/* 會員頭像 */
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    color: #ffffff;
+    margin-right: 12px;
+}
+
+.player-info {
+    flex-grow: 1;
+}
+
+.player-name {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.streak-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+.streak-win {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-emerald);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.streak-loss {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--accent-crimson);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.player-rating-cell {
+    text-align: right;
+    margin-left: 12px;
+}
+
+.rating-val {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.level-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+/* 最近賽事動態時間軸 */
+.timeline {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.timeline-item {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--transition-smooth);
+}
+
+.timeline-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.team-display {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 38%;
+}
+
+.team-display.right {
+    align-items: flex-end;
+}
+
+.team-member {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.team-display.right .team-member {
+    flex-direction: row-reverse;
+}
+
+.member-rating-change {
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.change-up { color: var(--accent-emerald); }
+.change-down { color: var(--accent-crimson); }
+
+.vs-score-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 24%;
+}
+
+.score-display {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.sets-detail {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    text-align: center;
+}
+
+.match-date-badge {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* === 7. 會員管理 Members 頁面 === */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.action-bar {
+    display: flex;
+    gap: 12px;
+}
+
+.search-input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: #ffffff;
+    font-family: var(--font-primary);
+    font-size: 14px;
+    width: 220px;
+    transition: var(--transition-smooth);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+}
+
+.select-filter {
+    background: rgba(17, 24, 39, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: #ffffff;
+    font-family: var(--font-primary);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-emerald) 0%, #059669 100%);
+    border: none;
+    color: #ffffff;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
+.members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.member-card {
+    padding: 20px;
+    position: relative;
+    cursor: pointer;
+}
+
+.member-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.member-card-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 14px;
+}
+
+.member-detail-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.member-detail-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* === 8. 雙打賽事登錄 Match Recorder 頁面 === */
+.match-recorder-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.match-setup-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+}
+
+.team-setup-panel {
+    padding: 24px;
+}
+
+.team-header-title {
+    font-size: 16px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 20px;
+    letter-spacing: 0.5px;
+}
+
+.team-setup-panel.t1 .team-header-title { color: var(--accent-blue); }
+.team-setup-panel.t2 .team-header-title { color: var(--accent-magenta); }
+
+.player-selector-box {
+    margin-bottom: 16px;
+}
+
+.player-selector-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 600;
+    display: block;
+}
+
+.vs-divider {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* 積分即時預測發光面板 */
+.predictor-glow-panel {
+    margin-top: 24px;
+    padding: 20px;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.04) 0%, rgba(255,255,255,0) 100%);
+    border-radius: 16px;
+}
+
+.predictor-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.predictor-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.predictor-col-team {
+    background: rgba(255,255,255,0.01);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.predictor-col-team.t1 { border-left: 3px solid var(--accent-blue); }
+.predictor-col-team.t2 { border-left: 3px solid var(--accent-magenta); }
+
+.predictor-team-title {
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.predictor-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.predictor-player-row:last-child { border-bottom: none; }
+
+.predict-rating-change {
+    font-weight: 700;
+}
+
+/* 比分與局數輸入 */
+.score-entry-panel {
+    margin-top: 24px;
+    padding: 24px;
+}
+
+.score-inputs-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 15px;
+}
+
+.score-num-input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    width: 80px;
+    height: 80px;
+    text-align: center;
+    font-size: 36px;
+    font-weight: 900;
+    color: #ffffff;
+    transition: var(--transition-smooth);
+}
+
+.score-num-input:focus {
+    outline: none;
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.sets-detail-inputs-container {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.set-score-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.set-score-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 50px;
+    font-weight: bold;
+}
+
+.set-score-input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    width: 60px;
+    height: 32px;
+    text-align: center;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.btn-submit-match {
+    width: 100%;
+    margin-top: 24px;
+    height: 50px;
+    font-size: 16px;
+    justify-content: center;
+}
+
+/* === 9. 歷史賽事 Match History 頁面 === */
+.table-panel {
+    overflow-x: auto;
+    padding: 8px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13px;
+}
+
+.history-table th {
+    padding: 14px 16px;
+    color: var(--text-secondary);
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.history-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    vertical-align: middle;
+}
+
+.history-table tr:hover td {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.btn-delete-match {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--accent-crimson);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 11px;
+    transition: var(--transition-smooth);
+}
+
+.btn-delete-match:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* === 10. 系統設定 Settings 頁面 === */
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.setting-group {
+    margin-bottom: 20px;
+}
+
+.setting-label {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: block;
+    color: var(--text-primary);
+}
+
+.setting-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    display: block;
+    margin-top: -6px;
+}
+
+.form-control {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #ffffff;
+    font-family: var(--font-primary);
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.levels-config-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.level-config-row {
+    display: grid;
+    grid-template-columns: 80px 1.5fr 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,0.01);
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.03);
+}
+
+.level-config-badge {
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.actions-card {
+    padding: 24px;
+}
+
+.danger-zone {
+    border-left: 4px solid var(--accent-crimson);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition-smooth);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--accent-crimson) 0%, #b91c1c 100%);
+    border: none;
+    color: #ffffff;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+
+/* === 11. Modal 彈窗樣式 === */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(3, 7, 18, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition-smooth);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-container {
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: scale(0.95) translateY(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-overlay.active .modal-container {
+    transform: scale(1) translateY(0);
+}
+
+.modal-container.large {
+    max-width: 700px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.modal-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.modal-close-btn:hover {
+    color: #ffffff;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+/* 個人檔案彈窗特化排版 */
+.profile-header-grid {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.profile-avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+}
+
+.profile-main-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+/* 頭像色相條 (Color Hue Selector) */
+.hue-bar {
+    width: 100%;
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(to right, 
+        hsl(0, 80%, 55%), hsl(60, 80%, 55%), hsl(120, 80%, 55%), 
+        hsl(180, 80%, 55%), hsl(240, 80%, 55%), hsl(300, 80%, 55%), hsl(360, 80%, 55%));
+    cursor: pointer;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.hue-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+    outline: none;
+}
+
+.hue-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 12px;
+    cursor: pointer;
+    background: transparent;
+    border-radius: 6px;
+}
+
+.hue-slider::-webkit-slider-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    border: 2px solid var(--accent-blue);
+}
+
+/* === 12. 全螢幕 Confetti Canvas === */
+#confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* === 13. 等級升降發光卡片通知 === */
+.glow-alert-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10000;
+    background: rgba(3, 7, 18, 0.85);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition-smooth);
+}
+
+.glow-alert-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.glow-alert-card {
+    padding: 32px;
+    width: 90%;
+    max-width: 440px;
+    text-align: center;
+    border-radius: 24px;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    transform: scale(0.9) rotate(-2deg);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.glow-alert-overlay.active .glow-alert-card {
+    transform: scale(1) rotate(0deg);
+}
+
+.glow-alert-card.up {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(7, 10, 19, 0.95) 100%);
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.25);
+    animation: alertPulseUp 2s infinite alternate;
+}
+
+.glow-alert-card.down {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.06) 0%, rgba(7, 10, 19, 0.95) 100%);
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.15);
+    animation: alertPulseDown 2s infinite alternate;
+}
+
+@keyframes alertPulseUp {
+    0% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.2); }
+    100% { box-shadow: 0 0 50px rgba(245, 158, 11, 0.4); }
+}
+
+@keyframes alertPulseDown {
+    0% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.1); }
+    100% { box-shadow: 0 0 50px rgba(239, 68, 68, 0.25); }
+}
+
+.glow-alert-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: inline-block;
+}
+
+.glow-alert-title {
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.glow-alert-card.up .glow-alert-title {
+    color: var(--accent-gold);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.glow-alert-card.down .glow-alert-title {
+    color: var(--accent-crimson);
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.glow-alert-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.glow-alert-level-box {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.glow-alert-level-badge {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.glow-alert-arrow {
+    font-size: 24px;
+    color: var(--text-muted);
+}
+
+/* === 14. 響應式佈局 (RWD) 手機板適配 === */
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-container {
+        flex-direction: column;
+        height: auto;
+        padding: 12px 0;
+        gap: 12px;
+    }
+    
+    nav {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        justify-content: flex-start;
+    }
+    
+    .nav-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .match-setup-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .vs-divider {
+        text-align: center;
+        padding: 8px 0;
+    }
+    
+    .predictor-cols {
+        grid-template-columns: 1fr;
+    }
+    
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .action-bar {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .search-input {
+        width: 100%;
+    }
+
+    /* 手機版觸控優化：防止 iOS 自動縮放、增大觸控面積並調整比分大小 */
+    .form-control, .search-input, .select-filter {
+        font-size: 16px !important;
+        padding: 12px 14px;
+        min-height: 44px;
+    }
+    
+    .nav-btn {
+        min-height: 40px;
+    }
+    
+    .score-num-input {
+        width: 70px;
+        height: 70px;
+        font-size: 28px;
+        border-radius: 10px;
+    }
+}

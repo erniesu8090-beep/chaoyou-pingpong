@@ -1,0 +1,19 @@
+{
+  "name": "朝友桌球俱樂部 - 雙打會內賽積分系統",
+  "short_name": "朝友桌球分級",
+  "description": "朝友桌球會內賽雙打專屬 Elo 評分與 10 級分級管理小程式，支援離線執行與實時賽事預測。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0f1d",
+  "theme_color": "#06b6d4",
+  "categories": ["sports", "utilities"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
