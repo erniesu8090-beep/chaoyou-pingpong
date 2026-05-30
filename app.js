@@ -752,7 +752,7 @@ function exportBackup() {
         members: state.members,
         matches: state.matches,
         settings: state.settings,
-        version: "1.0",
+        version: "1.1.0",
         exportDate: Date.now()
     }, null, 2);
 }

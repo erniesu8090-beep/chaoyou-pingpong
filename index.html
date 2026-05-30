@@ -73,6 +73,18 @@
         <!-- 1. 控制面板 Dashboard 視圖 -->
         <!-- ========================================== -->
         <div class="view-panel active" id="view-dashboard">
+            <!-- 頂部標題與版本資訊 -->
+            <div class="section-header" style="margin-bottom: 24px;">
+                <div>
+                    <h2 style="font-size:22px; font-weight:900;">📊 系統控制面板</h2>
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:2px;">俱樂部數據概覽、會員級別分佈狀況與名人堂積分排行榜</p>
+                </div>
+                <div style="font-size:11px; text-align:right; color:var(--text-secondary); background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:6px 12px; border-radius:8px; display:flex; flex-direction:column; gap:2px; font-weight:600;">
+                    <div>系統版本：<span style="color:var(--accent-emerald); font-weight:bold;">v1.1.0</span></div>
+                    <div>最後更新：<span>2026-05-30</span></div>
+                </div>
+            </div>
+
             <!-- 數據概覽指標列 -->
             <div class="stats-row">
                 <div class="glass-panel stat-card">
@@ -168,7 +180,10 @@
             <div class="match-recorder-container">
                 <div style="text-align:center; margin-bottom:24px;">
                     <h2 style="font-size:22px; font-weight:900;">🏓 雙打賽事積分登錄</h2>
-                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">選擇參賽的四名隊員，系統將依據雙方當前積分，進行實時 Elo 動態變動預測</p>
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+                        選擇參賽的四名隊員，系統將依據雙方當前積分，進行實時 Elo 動態變動預測。
+                        <a href="javascript:void(0)" onclick="openModal('k-guide-modal')" style="color:var(--accent-emerald); font-weight:700; text-decoration:none; margin-left:4px;">📖 查看 K 值計算說明</a>
+                    </p>
                 </div>
 
                 <div class="glass-panel" style="padding:24px; margin-bottom:24px;">
@@ -332,7 +347,10 @@
                     <div class="setting-group" style="margin-bottom:30px;">
                         <label class="setting-label">單場積分敏感度 (Elo K-Factor)</label>
                         <input type="number" class="form-control" id="set-k-factor" min="4" max="128" value="32">
-                        <span class="setting-desc" style="margin-top:4px;">* K-Factor 值越高，單場比賽勝負所造成的積分浮動越劇烈，預設值為 32。</span>
+                        <span class="setting-desc" style="margin-top:4px;">
+                            * K-Factor 值越高，單場比賽勝負所造成的積分浮動越劇烈，預設值為 32。
+                            <a href="javascript:void(0)" onclick="openModal('k-guide-modal')" style="color:var(--accent-emerald); font-weight:700; text-decoration:none; margin-left:4px;">📖 查看計算範例與規則說明</a>
+                        </span>
                     </div>
 
                     <h3 style="font-size:16px; font-weight:800; margin-bottom:15px;">🎖️ 等級名稱與積分門檻自定義</h3>
@@ -584,6 +602,73 @@
             <button class="btn-primary" id="alert-close-btn" style="width:100%; height:44px; justify-content:center; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); box-shadow:none;">
                 太棒了，我知道了！
             </button>
+        </div>
+    </div>
+
+    <!-- D. K 值與期望值計算說明彈窗 (K-Factor & Expectation Guide Modal) -->
+    <div class="modal-overlay" id="k-guide-modal">
+        <div class="glass-panel modal-container large" style="max-height: 85vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">📖 Elo 期望值與 K 值計算說明</h3>
+                <button class="modal-close-btn" onclick="closeModal('k-guide-modal')">✕</button>
+            </div>
+            <div class="modal-body" style="line-height: 1.6; font-size: 14px;">
+                <p style="margin-bottom: 12px; color: var(--text-primary); font-weight: bold;">
+                    本系統雙打 Elo 積分引擎（模式 A：個人期望值權重制）之計算原理如下：
+                </p>
+                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
+                    <div style="font-weight: 700; color: var(--accent-emerald); margin-bottom: 6px;">1. 期望勝率公式 (邏輯斯函數)</div>
+                    <code style="display: block; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #60a5fa; margin-bottom: 8px; overflow-x: auto;">期望勝率 (E) = 1 / (1 + 10^((對手平均積分 - 自己積分) / 400))</code>
+                    <ul style="padding-left: 20px; list-style-type: disc; color: var(--text-secondary); font-size: 13px; margin: 0;">
+                        <li><strong>對稱性</strong>：雙方實力完全平手時，期望勝率各佔 50% (0.5)。</li>
+                        <li><strong>實力差距</strong>：當你比對手高 200 分時，預期勝率約為 76%；低 200 分時，預期勝率約為 24%。</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
+                    <div style="font-weight: 700; color: var(--accent-emerald); margin-bottom: 6px;">2. K 值槓桿與積分變動計算</div>
+                    <code style="display: block; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #34d399; margin-bottom: 8px; overflow-x: auto;">積分變動值 = round(K * (實際勝負結果 - 期望勝率))</code>
+                    <ul style="padding-left: 20px; list-style-type: disc; color: var(--text-secondary); font-size: 13px; margin: 0;">
+                        <li><strong>實際勝負結果</strong>：贏球為 1，輸球為 0。</li>
+                        <li><strong>K 值意義</strong>：代表單場比賽勝負所能造成的<strong>最大積分變動上限</strong>。K 值越高，單場起伏越劇烈；K 值越低，積分變動越平緩。</li>
+                    </ul>
+                </div>
+
+                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
+                    <div style="font-weight: 700; color: var(--accent-gold); margin-bottom: 6px;">💡 實例說明 (當 K = 32 且雙方隊伍平均分為 1400 時)</div>
+                    <p style="color: var(--text-primary); font-size: 13px; font-weight: bold; margin-bottom: 6px;">
+                        強手 A (1600 分，E=76%) 與弱手 B (1200 分，E=24%) 同組：
+                    </p>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; margin-top: 8px; margin-bottom: 8px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary);">
+                                <th style="padding: 6px 0;">球員狀態</th>
+                                <th style="padding: 6px 0;">情境一：強隊獲勝</th>
+                                <th style="padding: 6px 0;">情境二：強隊爆冷落敗</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                                <td style="padding: 6px 0; font-weight: bold;">強手 A (1600分)</td>
+                                <td style="padding: 6px 0; color: var(--accent-emerald);">+8 分 <span style="color: var(--text-muted); font-size: 11px;">(32 * (1 - 0.76))</span></td>
+                                <td style="padding: 6px 0; color: var(--accent-crimson);">-24 分 <span style="color: var(--text-muted); font-size: 11px;">(32 * (0 - 0.76))</span></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; font-weight: bold;">弱手 B (1200分)</td>
+                                <td style="padding: 6px 0; color: var(--accent-emerald);">+24 分 <span style="color: var(--text-muted); font-size: 11px;">(32 * (1 - 0.24))</span></td>
+                                <td style="padding: 6px 0; color: var(--accent-crimson);">-8 分 <span style="color: var(--text-muted); font-size: 11px;">(32 * (0 - 0.24))</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <ul style="padding-left: 20px; list-style-type: disc; color: var(--text-secondary); font-size: 12px; margin: 0;">
+                        <li><strong>自我修正（引力機制）</strong>：如果積分過高（被高估），贏球只加極少分，輸球卻被倒扣很多分，使其迅速跌回真實級別；反之亦然。這能極佳防範「抱大腿抱分」！</li>
+                    </ul>
+                </div>
+
+                <div style="text-align: right; margin-top: 10px;">
+                    <button class="btn-primary" onclick="closeModal('k-guide-modal')" style="height: 38px; min-width: 100px; display: inline-flex; justify-content: center; box-shadow: none;">我知道了</button>
+                </div>
+            </div>
         </div>
     </div>
 
