@@ -61,8 +61,8 @@ function migrateSettingsIfNeeded() {
     }
 }
 
-// 初始化 LocalStorage 數據
-function initStorage() {
+// 輔助函式：從 LocalStorage 載入
+function loadFromLocalStorage() {
     const savedMembers = localStorage.getItem("cy_members");
     const savedMatches = localStorage.getItem("cy_matches");
     const savedSettings = localStorage.getItem("cy_settings");
@@ -70,14 +70,209 @@ function initStorage() {
     if (savedMembers) state.members = JSON.parse(savedMembers);
     if (savedMatches) state.matches = JSON.parse(savedMatches);
     if (savedSettings) state.settings = JSON.parse(savedSettings);
+}
+
+// 更新同步狀態 UI 顯示
+function updateSyncStatus(status, text) {
+    const el = document.getElementById("sync-status");
+    if (!el) return;
+    el.className = "sync-badge " + status;
+    el.textContent = text;
+}
+
+// 初始化 數據 (非同步：支援伺服器 Wifi 同步或 LocalStorage 降級)
+async function initStorage() {
+    const isHttp = window.location.protocol.startsWith("http");
+    
+    if (isHttp) {
+        try {
+            updateSyncStatus("loading", "同步中...");
+            const res = await fetch("/api/db", {
+                method: "GET",
+                headers: { "Cache-Control": "no-cache" }
+            });
+            if (!res.ok) throw new Error("HTTP Status " + res.status);
+            
+            const dbData = await res.json();
+            
+            // 檢查伺服器回傳的是否為空資料庫 (例如剛啟動無 database.json)
+            const isDbEmpty = !dbData || 
+                              (!dbData.members && !dbData.matches && !dbData.settings) || 
+                              (Array.isArray(dbData.members) && dbData.members.length === 0 && Array.isArray(dbData.matches) && dbData.matches.length === 0);
+            
+            if (isDbEmpty) {
+                // 伺服器無資料，嘗試把當前客戶端的 LocalStorage 資料推上去 (無縫升級)
+                loadFromLocalStorage();
+                updateSyncStatus("online", "📶 區網同步中 🔄");
+                
+                // 如果 LocalStorage 也有資料，立即寫入伺服器
+                if (state.members.length > 0) {
+                    await saveToStorage();
+                }
+            } else {
+                // 伺服器有資料，載入並同步更新本地 LocalStorage
+                if (dbData.members) state.members = dbData.members;
+                if (dbData.matches) state.matches = dbData.matches;
+                if (dbData.settings) state.settings = dbData.settings;
+                
+                // 同時備份一份在 LocalStorage 中
+                localStorage.setItem("cy_members", JSON.stringify(state.members));
+                localStorage.setItem("cy_matches", JSON.stringify(state.matches));
+                localStorage.setItem("cy_settings", JSON.stringify(state.settings));
+                
+                updateSyncStatus("online", "📶 區網同步中 🔄");
+            }
+        } catch (err) {
+            console.warn("連線至伺服器同步失敗，降級為本地單機模式:", err);
+            loadFromLocalStorage();
+            updateSyncStatus("error", "⚠️ 同步失敗 (點擊重試) 🔄");
+        }
+    } else {
+        // file:// 協定直接載入 LocalStorage
+        loadFromLocalStorage();
+        updateSyncStatus("offline", "💾 單機模式");
+    }
 
     migrateSettingsIfNeeded();
 }
 
-function saveToStorage() {
+async function saveToStorage() {
+    // 1. 先儲存到本地 LocalStorage 確保萬無一失
     localStorage.setItem("cy_members", JSON.stringify(state.members));
     localStorage.setItem("cy_matches", JSON.stringify(state.matches));
     localStorage.setItem("cy_settings", JSON.stringify(state.settings));
+
+    // 2. 若為 HTTP 模式，則非同步向伺服器同步寫入
+    const isHttp = window.location.protocol.startsWith("http");
+    if (isHttp) {
+        try {
+            const dbPayload = {
+                members: state.members,
+                matches: state.matches,
+                settings: state.settings
+            };
+            const res = await fetch("/api/db", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(dbPayload)
+            });
+            if (!res.ok) throw new Error("HTTP Status " + res.status);
+            updateSyncStatus("online", "📶 區網同步中 🔄");
+        } catch (err) {
+            console.error("同步儲存至伺服器失敗:", err);
+            updateSyncStatus("error", "⚠️ 同步失敗 (點擊重試) 🔄");
+        }
+    }
+}
+
+// 吐司通知提示（頂級 UI 反饋）
+function showToast(message) {
+    let toast = document.getElementById("sync-toast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "sync-toast";
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(16, 185, 129, 0.95);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+            opacity: 0;
+            z-index: 9999;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        `;
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    setTimeout(() => {
+        toast.style.transform = "translateX(-50%) translateY(0)";
+        toast.style.opacity = "1";
+    }, 50);
+    setTimeout(() => {
+        toast.style.transform = "translateX(-50%) translateY(100px)";
+        toast.style.opacity = "0";
+    }, 2500);
+}
+
+// 重新整理當前視圖資料
+function refreshCurrentView() {
+    const views = ["dashboard", "members", "match-recorder", "match-history", "settings"];
+    for (const view of views) {
+        const btn = document.getElementById(`nav-${view}`);
+        if (btn && btn.classList.contains("active")) {
+            if (view === "dashboard") renderDashboard();
+            else if (view === "members") renderMembers();
+            else if (view === "match-recorder") renderMatchRecorder();
+            else if (view === "match-history") renderMatchHistory();
+            else if (view === "settings") renderSettings();
+            break;
+        }
+    }
+}
+
+// 手動強制拉取伺服器最新資料
+async function manualSync() {
+    const isHttp = window.location.protocol.startsWith("http");
+    if (!isHttp) {
+        showToast("💾 目前處於單機模式，無須同步");
+        return;
+    }
+    
+    updateSyncStatus("loading", "同步中...");
+    try {
+        const res = await fetch("/api/db", {
+            method: "GET",
+            headers: { "Cache-Control": "no-cache" }
+        });
+        if (!res.ok) throw new Error("HTTP Status " + res.status);
+        
+        const dbData = await res.json();
+        
+        const isDbEmpty = !dbData || 
+                          (!dbData.members && !dbData.matches && !dbData.settings) || 
+                          (Array.isArray(dbData.members) && dbData.members.length === 0 && Array.isArray(dbData.matches) && dbData.matches.length === 0);
+        
+        if (isDbEmpty) {
+            if (state.members.length > 0) {
+                // 客戶端有資料但伺服器沒有，自動上傳
+                await saveToStorage();
+                showToast("📤 伺服器資料為空，已將本機資料上傳同步！");
+            } else {
+                updateSyncStatus("online", "📶 區網同步中 🔄");
+                showToast("ℹ️ 伺服器資料為空，且本地也無資料");
+            }
+        } else {
+            if (dbData.members) state.members = dbData.members;
+            if (dbData.matches) state.matches = dbData.matches;
+            if (dbData.settings) state.settings = dbData.settings;
+            
+            localStorage.setItem("cy_members", JSON.stringify(state.members));
+            localStorage.setItem("cy_matches", JSON.stringify(state.matches));
+            localStorage.setItem("cy_settings", JSON.stringify(state.settings));
+            
+            refreshCurrentView();
+            updateSyncStatus("online", "📶 區網同步中 🔄");
+            showToast("🎉 同步成功！已載入最新數據");
+        }
+    } catch (err) {
+        console.error("手動同步失敗:", err);
+        updateSyncStatus("error", "⚠️ 同步失敗 (點擊重試) 🔄");
+        showToast("❌ 同步失敗，請檢查網路與伺服器");
+    }
 }
 
 // 根據積分取得等級資訊
@@ -780,7 +975,7 @@ function switchView(viewName) {
     document.querySelectorAll(".view-panel").forEach(panel => {
         panel.classList.remove("active");
     });
-    document.querySelectorAll(".nav-btn").forEach(btn => {
+    document.querySelectorAll("header .nav-btn").forEach(btn => {
         btn.classList.remove("active");
     });
 
@@ -1505,7 +1700,7 @@ function openLevelChangeAlert(changes) {
 }
 
 // === 12. 應用程式入口與事件初始化 ===
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // 註冊 PWA Service Worker 離線快取（支援跨平台與離線使用）
     if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js")
@@ -1513,12 +1708,13 @@ document.addEventListener("DOMContentLoaded", () => {
             .catch(err => console.error("PWA Service Worker 註冊失敗:", err));
     }
 
-    // A. 載入 LocalStorage
-    initStorage();
+    // A. 載入 數據 (可能為伺服器 API 同步，或 LocalStorage 降級)
+    await initStorage();
 
-    // B. 若是新系統，先載入預設示範數據
-    if (state.members.length === 0) {
-        loadDemoData();
+    // 綁定手動同步按鈕
+    const syncStatusEl = document.getElementById("sync-status");
+    if (syncStatusEl) {
+        syncStatusEl.addEventListener("click", manualSync);
     }
 
     // C. 綁定導航欄切換
@@ -2007,6 +2203,782 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert("❌ 解析 CSV 檔案時發生錯誤：" + err.message);
             }
         };
-        reader.readAsText(file, "UTF-8");
     });
+
+    // === 批次賽事登錄相關事件與變數 ===
+    let activeMatchMode = "single";
+    const btnMatchSingleTab = document.getElementById("btn-match-single-tab");
+    const btnMatchBatchTab = document.getElementById("btn-match-batch-tab");
+    const matchSingleContainer = document.getElementById("match-single-container");
+    const matchBatchContainer = document.getElementById("match-batch-container");
+
+    function setMatchMode(mode) {
+        activeMatchMode = mode;
+        if (mode === "single") {
+            btnMatchSingleTab.classList.add("active");
+            btnMatchBatchTab.classList.remove("active");
+            matchSingleContainer.style.display = "block";
+            matchBatchContainer.style.display = "none";
+        } else {
+            btnMatchSingleTab.classList.remove("active");
+            btnMatchBatchTab.classList.add("active");
+            matchSingleContainer.style.display = "none";
+            matchBatchContainer.style.display = "block";
+        }
+    }
+
+    if (btnMatchSingleTab && btnMatchBatchTab) {
+        btnMatchSingleTab.addEventListener("click", () => setMatchMode("single"));
+        btnMatchBatchTab.addEventListener("click", () => setMatchMode("bulk"));
+    }
+
+    const btnParseBatch = document.getElementById("btn-parse-batch");
+    if (btnParseBatch) {
+        btnParseBatch.addEventListener("click", handleParseBatch);
+    }
+
+    const btnClearBatch = document.getElementById("btn-clear-batch");
+    if (btnClearBatch) {
+        btnClearBatch.addEventListener("click", () => {
+            document.getElementById("batch-matches-input").value = "";
+            document.getElementById("batch-preview-container").innerHTML = "";
+            document.getElementById("batch-preview-area").style.display = "none";
+            lastParsedMatches = [];
+        });
+    }
+
+    const btnSubmitBatch = document.getElementById("btn-submit-batch");
+    if (btnSubmitBatch) {
+        btnSubmitBatch.addEventListener("click", handleSubmitBatch);
+    }
+
+    const batchCsvFileInput = document.getElementById("batch-csv-file-input");
+    const btnTriggerBatchCsv = document.getElementById("btn-trigger-batch-csv");
+    if (btnTriggerBatchCsv && batchCsvFileInput) {
+        btnTriggerBatchCsv.addEventListener("click", () => {
+            batchCsvFileInput.value = ""; // 重設以利重複上傳同檔案
+            batchCsvFileInput.click();
+        });
+        
+        batchCsvFileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const text = evt.target.result;
+                    // 將 CSV 內容填入 Textarea
+                    document.getElementById("batch-matches-input").value = text;
+                    // 自動觸發解析與預覽
+                    handleParseBatch();
+                } catch (err) {
+                    alert("❌ 讀取 CSV 檔案失敗：" + err.message);
+                }
+            };
+        });
+    }
+
+    // === 單日積分報表相關事件 ===
+    const btnOpenDailyReport = document.getElementById("btn-open-daily-report");
+    if (btnOpenDailyReport) {
+        btnOpenDailyReport.addEventListener("click", () => {
+            // 從所有對戰紀錄中擷取不重複日期
+            const dates = Array.from(new Set(state.matches.map(m => {
+                const d = new Date(m.date);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }))).sort().reverse(); // 最新日期在前
+            
+            const repSelect = document.getElementById("rep-date-select");
+            repSelect.innerHTML = "";
+            
+            if (dates.length === 0) {
+                const d = new Date();
+                const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                dates.push(todayStr);
+            }
+            
+            dates.forEach(dt => {
+                repSelect.insertAdjacentHTML("beforeend", `<option value="${dt}">${dt}</option>`);
+            });
+            
+            // 預設生成最新一天的報表
+            generateDailyReport(dates[0]);
+            openModal("daily-report-modal");
+        });
+    }
+    
+    const repDateSelect = document.getElementById("rep-date-select");
+    if (repDateSelect) {
+        repDateSelect.addEventListener("change", (e) => {
+            generateDailyReport(e.target.value);
+        });
+    }
+    
+    const btnPrintReport = document.getElementById("btn-print-report");
+    if (btnPrintReport) {
+        btnPrintReport.addEventListener("click", () => {
+            window.print();
+        });
+    }
+    
+    const btnExportReportCsv = document.getElementById("btn-export-report-csv");
+    if (btnExportReportCsv) {
+        btnExportReportCsv.addEventListener("click", () => {
+            const selectedDate = document.getElementById("rep-date-select").value;
+            exportDailyReportCsv(selectedDate);
+        });
+    }
 });
+
+// === 批次賽事解析與登錄核心邏輯 ===
+let lastParsedMatches = [];
+
+function parseBatchMatches(text) {
+    const lines = text.split(/\r?\n/);
+    const parsed = [];
+    
+    lines.forEach((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) return; // 跳過空行
+        
+        // 1. 嘗試解析 CSV 逗號/Tab 分隔格式
+        // 格式一: 隊伍1隊員1,隊伍1隊員2,隊伍2隊員1,隊伍2隊員2,比分1,比分2
+        // 格式二: 隊伍1隊員1,隊伍1隊員2,比分1,比分2,隊伍2隊員1,隊伍2隊員2
+        const csvParts = trimmed.split(/[,，\t]/).map(p => p.trim());
+        if (csvParts.length === 6) {
+            const num4 = parseInt(csvParts[4]);
+            const num5 = parseInt(csvParts[5]);
+            const num2 = parseInt(csvParts[2]);
+            const num3 = parseInt(csvParts[3]);
+            
+            if (!isNaN(num4) && !isNaN(num5)) {
+                parsed.push({
+                    raw: trimmed,
+                    lineNum: index + 1,
+                    success: true,
+                    team1: [csvParts[0], csvParts[1]],
+                    team2: [csvParts[2], csvParts[3]],
+                    score1: num4,
+                    score2: num5
+                });
+                return;
+            } else if (!isNaN(num2) && !isNaN(num3)) {
+                parsed.push({
+                    raw: trimmed,
+                    lineNum: index + 1,
+                    success: true,
+                    team1: [csvParts[0], csvParts[1]],
+                    team2: [csvParts[4], csvParts[5]],
+                    score1: num2,
+                    score2: num3
+                });
+                return;
+            }
+        }
+        
+        // 2. 嘗試解析自定義文字格式，搜尋比分分割，如 "3:1"、"3比1"、"3-1" 等
+        const regex = /(\d+)\s*(?:[:：\-比]|vs\b|v\b|VS\b)\s*(\d+)/i;
+        const match = trimmed.match(regex);
+        
+        if (!match) {
+            parsed.push({
+                raw: trimmed,
+                lineNum: index + 1,
+                success: false,
+                error: "找不到有效的對戰大局比分（例如：3:1 或 3比2）"
+            });
+            return;
+        }
+        
+        const score1 = parseInt(match[1]);
+        const score2 = parseInt(match[2]);
+        const scoreStr = match[0];
+        
+        const parts = trimmed.split(scoreStr);
+        if (parts.length < 2) {
+            parsed.push({
+                raw: trimmed,
+                lineNum: index + 1,
+                success: false,
+                error: "無法藉由比分正確分割左右隊伍"
+            });
+            return;
+        }
+        
+        const leftText = parts[0].trim();
+        const rightText = parts.slice(1).join(scoreStr).trim();
+        
+        // 分割隊員姓名
+        const playerRegex = /[\/、\+&,\s]+/;
+        const team1 = leftText.split(playerRegex).map(p => p.trim()).filter(p => p.length > 0);
+        const team2 = rightText.split(playerRegex).map(p => p.trim()).filter(p => p.length > 0);
+        
+        if (team1.length !== 2) {
+            parsed.push({
+                raw: trimmed,
+                lineNum: index + 1,
+                success: false,
+                error: `隊伍一解析出的人數不正確（${team1.length} 人：${team1.join(", ") || "無"}，應為 2 人）`
+            });
+            return;
+        }
+        if (team2.length !== 2) {
+            parsed.push({
+                raw: trimmed,
+                lineNum: index + 1,
+                success: false,
+                error: `隊伍二解析出的人數不正確（${team2.length} 人：${team2.join(", ") || "無"}，應為 2 人）`
+            });
+            return;
+        }
+        
+        parsed.push({
+            raw: trimmed,
+            lineNum: index + 1,
+            success: true,
+            team1: team1,
+            team2: team2,
+            score1: score1,
+            score2: score2
+        });
+    });
+    
+    return parsed;
+}
+
+function handleParseBatch() {
+    const inputText = document.getElementById("batch-matches-input").value;
+    const autoRegister = document.getElementById("batch-auto-register").checked;
+    const defaultRating = parseInt(document.getElementById("batch-default-rating").value) || 1200;
+    
+    if (!inputText.trim()) {
+        alert("請先貼上賽事成績！");
+        return;
+    }
+    
+    const parsed = parseBatchMatches(inputText);
+    lastParsedMatches = parsed;
+    
+    const container = document.getElementById("batch-preview-container");
+    container.innerHTML = "";
+    
+    let successCount = 0;
+    let errorCount = 0;
+    let newPlayersSet = new Set();
+    
+    parsed.forEach(m => {
+        if (!m.success) {
+            errorCount++;
+            container.insertAdjacentHTML("beforeend", `
+                <div class="batch-preview-item error-row">
+                    <div class="batch-preview-line-num">第 ${m.lineNum} 行</div>
+                    <div class="batch-preview-teams" style="color:var(--accent-crimson); font-weight:600; font-size:12px;">
+                        ⚠️ 解析失敗：${m.error}
+                    </div>
+                    <span class="batch-status-badge error">解析失敗</span>
+                </div>
+            `);
+            return;
+        }
+        
+        const p1 = state.members.find(p => p.name.toLowerCase() === m.team1[0].toLowerCase());
+        const p2 = state.members.find(p => p.name.toLowerCase() === m.team1[1].toLowerCase());
+        const p3 = state.members.find(p => p.name.toLowerCase() === m.team2[0].toLowerCase());
+        const p4 = state.members.find(p => p.name.toLowerCase() === m.team2[1].toLowerCase());
+        
+        const team1Players = [
+            { name: m.team1[0], exist: !!p1, rating: p1 ? p1.rating : null },
+            { name: m.team1[1], exist: !!p2, rating: p2 ? p2.rating : null }
+        ];
+        const team2Players = [
+            { name: m.team2[0], exist: !!p3, rating: p3 ? p3.rating : null },
+            { name: m.team2[1], exist: !!p4, rating: p4 ? p4.rating : null }
+        ];
+        
+        const missingPlayers = [];
+        [...team1Players, ...team2Players].forEach(p => {
+            if (!p.exist) {
+                missingPlayers.push(p.name);
+                newPlayersSet.add(p.name);
+            }
+        });
+        
+        let statusText = "準備就緒";
+        let statusClass = "ready";
+        let itemClass = "ready-row";
+        
+        if (missingPlayers.length > 0) {
+            if (autoRegister) {
+                statusText = `自動註冊 ${missingPlayers.length} 人`;
+                statusClass = "new-players";
+                itemClass = "new-players-row";
+            } else {
+                statusText = `球員未註冊: ${missingPlayers.join(", ")}`;
+                statusClass = "error";
+                itemClass = "error-row";
+                m.hasUnregisteredError = true;
+            }
+        }
+        
+        if (m.hasUnregisteredError) {
+            errorCount++;
+        } else {
+            successCount++;
+        }
+        
+        const renderPlayerHtml = (p) => {
+            if (p.exist) {
+                return `<span class="batch-player-tag">${p.name} <span style="opacity:0.6; font-size:10px;">(${p.rating})</span></span>`;
+            } else {
+                return `<span class="batch-player-tag new-player" title="新球員，將自動註冊">${p.name} 🆕</span>`;
+            }
+        };
+        
+        const rowHtml = `
+            <div class="batch-preview-item ${itemClass}">
+                <div class="batch-preview-line-num">第 ${m.lineNum} 行</div>
+                <div class="batch-preview-teams">
+                    <div class="batch-team-names t1">
+                        ${renderPlayerHtml(team1Players[0])}
+                        <span style="color:var(--text-muted); font-size:10px;">+</span>
+                        ${renderPlayerHtml(team1Players[1])}
+                    </div>
+                    <div class="batch-preview-vs-score">
+                        <span>${m.score1}</span>
+                        <span>:</span>
+                        <span>${m.score2}</span>
+                    </div>
+                    <div class="batch-team-names t2">
+                        ${renderPlayerHtml(team2Players[0])}
+                        <span style="color:var(--text-muted); font-size:10px;">+</span>
+                        ${renderPlayerHtml(team2Players[1])}
+                    </div>
+                </div>
+                <span class="batch-status-badge ${statusClass}">${statusText}</span>
+            </div>
+        `;
+        container.insertAdjacentHTML("beforeend", rowHtml);
+    });
+    
+    const summaryText = `成功解析 ${successCount} 場 | 包含錯誤 ${errorCount} 場 | 新球員建檔 ${newPlayersSet.size} 人`;
+    document.getElementById("batch-summary-badge").innerText = summaryText;
+    document.getElementById("batch-preview-area").style.display = "block";
+    
+    const submitBtn = document.getElementById("btn-submit-batch");
+    if (successCount > 0) {
+        submitBtn.style.display = "block";
+        submitBtn.disabled = false;
+        submitBtn.innerText = `🚀 確認匯入並計算這 ${successCount} 場賽事`;
+    } else {
+        submitBtn.style.display = "none";
+        submitBtn.disabled = true;
+    }
+}
+
+function handleSubmitBatch() {
+    if (!lastParsedMatches || lastParsedMatches.length === 0) return;
+    
+    const autoRegister = document.getElementById("batch-auto-register").checked;
+    const defaultRating = parseInt(document.getElementById("batch-default-rating").value) || 1200;
+    
+    const validMatches = lastParsedMatches.filter(m => m.success && (!m.hasUnregisteredError || autoRegister));
+    if (validMatches.length === 0) {
+        alert("沒有可匯入的有效賽事！");
+        return;
+    }
+    
+    if (!confirm(`確定要批次匯入這 ${validMatches.length} 場賽事並計算 Elo 積分嗎？`)) {
+        return;
+    }
+    
+    // 記錄球員變動前積分
+    const ratingsBefore = new Map();
+    state.members.forEach(member => {
+        ratingsBefore.set(member.name.toLowerCase(), {
+            rating: member.rating,
+            level: getLevelInfo(member.rating).level
+        });
+    });
+    
+    let importedCount = 0;
+    
+    // 執行循序匯入
+    validMatches.forEach(m => {
+        const getOrCreatePlayerId = (name) => {
+            let player = state.members.find(p => p.name.toLowerCase() === name.toLowerCase());
+            if (!player && autoRegister) {
+                const randomHue = Math.floor(Math.random() * 360);
+                player = addMember(name, defaultRating, randomHue);
+            }
+            return player ? player.id : null;
+        };
+        
+        const idA = getOrCreatePlayerId(m.team1[0]);
+        const idB = getOrCreatePlayerId(m.team1[1]);
+        const idC = getOrCreatePlayerId(m.team2[0]);
+        const idD = getOrCreatePlayerId(m.team2[1]);
+        
+        if (idA && idB && idC && idD) {
+            const res = recordMatch(idA, idB, idC, idD, m.score1, m.score2, []);
+            if (res && res.success) {
+                importedCount++;
+            }
+        }
+    });
+    
+    if (importedCount > 0) {
+        // 比對批次前後等級變動
+        const aggregatedLevelChanges = [];
+        state.members.forEach(member => {
+            const prevInfo = ratingsBefore.get(member.name.toLowerCase());
+            const oldRating = prevInfo ? prevInfo.rating : defaultRating;
+            const oldLvl = prevInfo ? getLevelInfo(oldRating) : getLevelInfo(defaultRating);
+            const newRating = member.rating;
+            const newLvl = getLevelInfo(newRating);
+            
+            if (oldLvl.level !== newLvl.level) {
+                aggregatedLevelChanges.push({
+                    playerName: member.name,
+                    oldLvl: oldLvl,
+                    newLvl: newLvl,
+                    direction: newLvl.level < oldLvl.level ? "up" : "down"
+                });
+            }
+        });
+        
+        saveToStorage();
+        startConfetti();
+        
+        // 清空重設
+        document.getElementById("batch-matches-input").value = "";
+        document.getElementById("batch-preview-container").innerHTML = "";
+        document.getElementById("batch-preview-area").style.display = "none";
+        lastParsedMatches = [];
+        
+        switchView("dashboard");
+        alert(`🎉 成功批次匯入 ${importedCount} 場賽事！`);
+        
+        if (aggregatedLevelChanges.length > 0) {
+            setTimeout(() => {
+                openLevelChangeAlert(aggregatedLevelChanges);
+            }, 1200);
+        }
+    } else {
+        alert("匯入失敗，請檢查資料是否正確。");
+    }
+}
+
+// === 產生單日積分報表與 CSV 匯出邏輯 ===
+function generateDailyReport(dateStr) {
+    const printArea = document.getElementById("print-report-area");
+    if (!printArea) return;
+    
+    const dateStart = new Date(dateStr + "T00:00:00").getTime();
+    const dateEnd = new Date(dateStr + "T23:59:59.999").getTime();
+    
+    // 1. 蒐集球員當天起始積分與目前積分
+    const reportData = [];
+    state.members.forEach(member => {
+        // 檢查球員是否在該日期結束後才建立
+        const initEntry = member.ratingHistory.find(h => h.matchId === "init");
+        const creationTime = initEntry ? initEntry.date : 0;
+        if (creationTime > dateEnd) return; // 該日期之後才創立，不列入報表
+        
+        // 起始積分：該日之前的最後一次積分點
+        let startingRating = member.initialRating;
+        const historyBefore = member.ratingHistory.filter(h => h.date < dateStart);
+        if (historyBefore.length > 0) {
+            startingRating = historyBefore[historyBefore.length - 1].rating;
+        } else if (initEntry) {
+            startingRating = initEntry.rating;
+        }
+        
+        // 目前積分：該日結束前的最後一次積分點
+        let currentRating = startingRating;
+        const historyBeforeOrOn = member.ratingHistory.filter(h => h.date <= dateEnd);
+        if (historyBeforeOrOn.length > 0) {
+            currentRating = historyBeforeOrOn[historyBeforeOrOn.length - 1].rating;
+        }
+        
+        const change = currentRating - startingRating;
+        
+        reportData.push({
+            name: member.name,
+            startingRating: startingRating,
+            change: change,
+            currentRating: currentRating
+        });
+    });
+    
+    // 2. 排序並計算原始排名
+    reportData.sort((a, b) => {
+        if (b.startingRating !== a.startingRating) {
+            return b.startingRating - a.startingRating;
+        }
+        return a.name.localeCompare(b.name, "zh-Hant");
+    });
+    
+    reportData.forEach((p, idx) => {
+        p.originalRank = idx + 1;
+    });
+    
+    // 3. 計算新積分的排名
+    const reportDataByCurrent = [...reportData].sort((a, b) => {
+        if (b.currentRating !== a.currentRating) {
+            return b.currentRating - a.currentRating;
+        }
+        return a.name.localeCompare(b.name, "zh-Hant");
+    });
+    
+    const currentRankMap = new Map();
+    reportDataByCurrent.forEach((p, idx) => {
+        currentRankMap.set(p.name, idx + 1);
+    });
+    
+    reportData.forEach(p => {
+        p.newRank = currentRankMap.get(p.name);
+    });
+    
+    // 4. 切割成雙欄（左右對稱）
+    const totalCount = reportData.length;
+    const rowsPerSide = Math.ceil(totalCount / 2);
+    
+    // 計算日期的 M/DD 格式用於表頭
+    const dateObj = new Date(dateStr);
+    const m = dateObj.getMonth() + 1;
+    const d = dateObj.getDate();
+    const formattedDateHeader = `${m}/${d}比賽結果`;
+    
+    // 輔助函式：渲染新排名標籤（有升降箭頭）
+    const renderNewRankHtml = (originalRank, newRank) => {
+        if (newRank < originalRank) {
+            return `${newRank} <span style="color:#16a34a; font-size:10px; font-weight:900;">▲</span>`;
+        } else if (newRank > originalRank) {
+            return `${newRank} <span style="color:#dc2626; font-size:10px; font-weight:900;">▼</span>`;
+        }
+        return `${newRank}`;
+    };
+    
+    let tableRowsHtml = "";
+    for (let i = 0; i < rowsPerSide; i++) {
+        const leftPlayer = reportData[i];
+        const rightPlayer = reportData[i + rowsPerSide];
+        
+        const leftChangeText = leftPlayer.change > 0 ? `+${leftPlayer.change}` : leftPlayer.change.toString();
+        const rightChangeText = rightPlayer ? (rightPlayer.change > 0 ? `+${rightPlayer.change}` : rightPlayer.change.toString()) : "";
+        
+        const leftChangeStyle = leftPlayer.change > 0 ? "color:#1d4ed8; font-weight:bold;" : (leftPlayer.change < 0 ? "color:#b91c1c; font-weight:bold;" : "color:#000;");
+        const rightChangeStyle = rightPlayer ? (rightPlayer.change > 0 ? "color:#1d4ed8; font-weight:bold;" : (rightPlayer.change < 0 ? "color:#b91c1c; font-weight:bold;" : "color:#000;")) : "";
+        
+        tableRowsHtml += `
+            <tr style="height: 32px;">
+                <!-- 左半部 -->
+                <td style="font-weight:bold; width: 3.5%;">${leftPlayer.originalRank}</td>
+                <td style="width: 3.5%;">${renderNewRankHtml(leftPlayer.originalRank, leftPlayer.newRank)}</td>
+                <td style="width: 12%;">${leftPlayer.name}</td>
+                <td style="width: 9.5%;">${leftPlayer.startingRating}</td>
+                <td class="daily-report-highlight-col" style="width: 12%; ${leftChangeStyle}">${leftChangeText}</td>
+                <td style="width: 9.5%;">${leftPlayer.currentRating}</td>
+                
+                <!-- 欄位間隔間距 -->
+                <td style="border:none; width: 4%; background:#ffffff;"></td>
+                
+                <!-- 右半部 -->
+                ${rightPlayer ? `
+                <td style="font-weight:bold; width: 3.5%;">${rightPlayer.originalRank}</td>
+                <td style="width: 3.5%;">${renderNewRankHtml(rightPlayer.originalRank, rightPlayer.newRank)}</td>
+                <td style="width: 12%;">${rightPlayer.name}</td>
+                <td style="width: 9.5%;">${rightPlayer.startingRating}</td>
+                <td class="daily-report-highlight-col" style="width: 12%; ${rightChangeStyle}">${rightChangeText}</td>
+                <td style="width: 9.5%;">${rightPlayer.currentRating}</td>
+                ` : `
+                <td style="width: 3.5%;"></td>
+                <td style="width: 3.5%;"></td>
+                <td style="width: 12%;"></td>
+                <td style="width: 9.5%;"></td>
+                <td class="daily-report-highlight-col" style="width: 12%;"></td>
+                <td style="width: 9.5%;"></td>
+                `}
+            </tr>
+        `;
+    }
+    
+    // 取得當前等級門檻設定以渲染底部對照表
+    const levels = state.settings.ratingLevels || DEFAULT_LEVELS;
+    const sortedLevels = [...levels].sort((a, b) => a.level - b.level);
+    
+    const renderLevelRows = (startIdx, endIdx) => {
+        let rows = "";
+        for (let i = startIdx; i <= endIdx; i++) {
+            const lvl = sortedLevels[i];
+            if (i === startIdx) {
+                rows += `
+                    <tr style="height: 28px;">
+                        <td rowspan="5" style="width: 30%; background: #e5e7eb; font-weight: bold; border: 1px solid #4b5563; text-align: center; color: #000; font-size:12px;">等級名稱</td>
+                        <td style="width: 25%; font-weight: bold; border: 1px solid #4b5563; padding: 4px; color: #000; font-size:12px;">L${lvl.level}</td>
+                        <td style="border: 1px solid #4b5563; padding: 4px; color: #000; font-size:12px;">${lvl.min}~${lvl.max}</td>
+                    </tr>
+                `;
+            } else {
+                rows += `
+                    <tr style="height: 28px;">
+                        <td style="font-weight: bold; border: 1px solid #4b5563; padding: 4px; color: #000; font-size:12px;">L${lvl.level}</td>
+                        <td style="border: 1px solid #4b5563; padding: 4px; color: #000; font-size:12px;">${lvl.min}~${lvl.max}</td>
+                    </tr>
+                `;
+            }
+        }
+        return rows;
+    };
+    
+    const levelsLeftHtml = renderLevelRows(0, 4);  // L1-L5
+    const levelsRightHtml = renderLevelRows(5, 9); // L6-L10
+    
+    const formattedTitleDate = dateStr.replace(/-/g, '.');
+    
+    const htmlContent = `
+        <!-- 表頭與日期 -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px; border-bottom:3px double #000; padding-bottom:6px;">
+            <div style="font-size:22px; font-weight:900; color:#000; letter-spacing:1px; font-family:'Outfit', 'Noto Sans TC', sans-serif;">新朝友分級積分表</div>
+            <div style="font-size:16px; font-weight:bold; color:#000; font-family:monospace; margin-bottom: 2px;">${formattedTitleDate}</div>
+        </div>
+        
+        <!-- 主要成績雙欄表格 -->
+        <table class="daily-report-table">
+            <thead>
+                <tr style="height: 32px;">
+                    <!-- 左半表頭 -->
+                    <th style="width:3.5%;">原排</th>
+                    <th style="width:3.5%;">新排</th>
+                    <th style="width:12%;">姓名</th>
+                    <th style="width:9.5%;">起始積分</th>
+                    <th style="width:12%; background-color:#dbeafe !important;">${formattedDateHeader}</th>
+                    <th style="width:9.5%;">目前積分</th>
+                    
+                    <!-- 間隔空欄 -->
+                    <th style="border:none; width:4%; background:#ffffff;"></th>
+                    
+                    <!-- 右半表頭 -->
+                    <th style="width:3.5%;">原排</th>
+                    <th style="width:3.5%;">新排</th>
+                    <th style="width:12%;">姓名</th>
+                    <th style="width:9.5%;">起始積分</th>
+                    <th style="width:12%; background-color:#dbeafe !important;">${formattedDateHeader}</th>
+                    <th style="width:9.5%;">目前積分</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRowsHtml}
+            </tbody>
+        </table>
+        
+        <!-- 底部對應等級區間對照表 -->
+        <div style="margin-top:20px; display:flex; justify-content:space-between;">
+            <!-- 左半等級 (L1-L5) -->
+            <div style="width:48%;">
+                <table style="width:100%; border-collapse:collapse; border:1px solid #4b5563; text-align:center;">
+                    <tbody>
+                        ${levelsLeftHtml}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 右半等級 (L6-L10) -->
+            <div style="width:48%;">
+                <table style="width:100%; border-collapse:collapse; border:1px solid #4b5563; text-align:center;">
+                    <tbody>
+                        ${levelsRightHtml}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    printArea.innerHTML = htmlContent;
+}
+
+function exportDailyReportCsv(dateStr) {
+    const dateStart = new Date(dateStr + "T00:00:00").getTime();
+    const dateEnd = new Date(dateStr + "T23:59:59.999").getTime();
+    
+    const csvRows = [];
+    csvRows.push("\uFEFF" + `原排,新排,姓名,起始積分,${dateStr.replace(/-/g, "/")}比賽結果,目前積分`);
+    
+    const reportData = [];
+    state.members.forEach(member => {
+        const initEntry = member.ratingHistory.find(h => h.matchId === "init");
+        const creationTime = initEntry ? initEntry.date : 0;
+        if (creationTime > dateEnd) return;
+        
+        let startingRating = member.initialRating;
+        const historyBefore = member.ratingHistory.filter(h => h.date < dateStart);
+        if (historyBefore.length > 0) {
+            startingRating = historyBefore[historyBefore.length - 1].rating;
+        } else if (initEntry) {
+            startingRating = initEntry.rating;
+        }
+        
+        let currentRating = startingRating;
+        const historyBeforeOrOn = member.ratingHistory.filter(h => h.date <= dateEnd);
+        if (historyBeforeOrOn.length > 0) {
+            currentRating = historyBeforeOrOn[historyBeforeOrOn.length - 1].rating;
+        }
+        
+        const change = currentRating - startingRating;
+        
+        reportData.push({
+            name: member.name,
+            startingRating: startingRating,
+            change: change,
+            currentRating: currentRating
+        });
+    });
+    
+    reportData.sort((a, b) => {
+        if (b.startingRating !== a.startingRating) {
+            return b.startingRating - a.startingRating;
+        }
+        return a.name.localeCompare(b.name, "zh-Hant");
+    });
+    
+    reportData.forEach((p, idx) => {
+        p.originalRank = idx + 1;
+    });
+    
+    const reportDataByCurrent = [...reportData].sort((a, b) => {
+        if (b.currentRating !== a.currentRating) {
+            return b.currentRating - a.currentRating;
+        }
+        return a.name.localeCompare(b.name, "zh-Hant");
+    });
+    
+    const currentRankMap = new Map();
+    reportDataByCurrent.forEach((p, idx) => {
+        currentRankMap.set(p.name, idx + 1);
+    });
+    
+    reportData.forEach(p => {
+        p.newRank = currentRankMap.get(p.name);
+    });
+    
+    reportData.forEach(p => {
+        const changeStr = p.change > 0 ? `+${p.change}` : p.change.toString();
+        csvRows.push(`${p.originalRank},${p.newRank},"${p.name.replace(/"/g, '""')}",${p.startingRating},${changeStr},${p.currentRating}`);
+    });
+    
+    try {
+        const csvContent = csvRows.join("\r\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `朝友桌球單日分級積分表_${dateStr.replace(/-/g, "")}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        alert("匯出 CSV 發生錯誤：" + err.message);
+    }
+}

@@ -134,6 +134,55 @@ header {
     fill: url(#logoGrad);
 }
 
+/* 同步狀態標籤 */
+.sync-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    user-select: none;
+}
+.sync-badge:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+.sync-badge:active {
+    transform: translateY(1px);
+}
+.sync-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+    box-shadow: 0 0 8px currentColor;
+}
+.sync-badge.online {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+.sync-badge.offline {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.25);
+}
+.sync-badge.error {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
 nav {
     display: flex;
     gap: 8px;
@@ -1166,6 +1215,126 @@ nav {
     color: var(--text-muted);
 }
 
+/* === 13. 批次賽事登錄預覽樣式 === */
+.batch-preview-item {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: var(--transition-smooth);
+    gap: 12px;
+}
+
+.batch-preview-item:hover {
+    background: rgba(255, 255, 255, 0.035);
+    border-color: rgba(255, 255, 255, 0.09);
+    transform: translateY(-1px);
+}
+
+.batch-preview-item.error-row {
+    border-left: 3px solid var(--accent-crimson);
+    background: rgba(239, 68, 68, 0.02);
+}
+
+.batch-preview-item.ready-row {
+    border-left: 3px solid var(--accent-emerald);
+}
+
+.batch-preview-item.new-players-row {
+    border-left: 3px solid var(--accent-gold);
+}
+
+.batch-preview-line-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    min-width: 48px;
+}
+
+.batch-preview-teams {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+    font-size: 13px;
+}
+
+.batch-team-names {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.batch-team-names.t1 {
+    color: #93c5fd; /* light blue */
+}
+
+.batch-team-names.t2 {
+    color: #f472b6; /* light pink */
+}
+
+.batch-preview-vs-score {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.batch-player-tag {
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.batch-player-tag.new-player {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--accent-gold);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.1);
+}
+
+.batch-status-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.batch-status-badge.ready {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-emerald);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.batch-status-badge.new-players {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-gold);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.batch-status-badge.error {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--accent-crimson);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
 /* === 14. 響應式佈局 (RWD) 手機板適配 === */
 @media (max-width: 1024px) {
     .dashboard-grid {
@@ -1246,5 +1415,75 @@ nav {
         height: 70px;
         font-size: 28px;
         border-radius: 10px;
+    }
+}
+
+/* === 15. 列印日報表專用樣式 === */
+.daily-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    color: #000000 !important;
+}
+
+.daily-report-table th, .daily-report-table td {
+    border: 1px solid #4b5563;
+    padding: 6px 8px;
+    text-align: center;
+}
+
+.daily-report-table th {
+    background-color: #f3f4f6;
+    font-weight: 700;
+}
+
+.daily-report-highlight-col {
+    background-color: #dbeafe !important; /* light blue */
+    font-weight: 700;
+}
+
+/* Print CSS media query */
+@media print {
+    /* Hide all page content except the print area */
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        background-image: none !important;
+    }
+    header, footer, nav, .no-print, .modal-header {
+        display: none !important;
+    }
+    .modal-overlay {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: auto;
+        background: #ffffff !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        z-index: 9999;
+    }
+    .modal-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: 100% !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        transform: none !important;
+    }
+    #print-report-area {
+        box-shadow: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
     }
 }

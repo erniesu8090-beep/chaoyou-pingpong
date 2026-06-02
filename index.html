@@ -33,13 +33,16 @@
     <!-- 頂部毛玻璃導航欄 -->
     <header>
         <div class="header-container">
-            <div class="logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.5"/>
-                    <circle cx="12" cy="12" r="6" fill="currentColor"/>
-                    <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                <span>朝友桌球會內賽分級系統</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.5"/>
+                        <circle cx="12" cy="12" r="6" fill="currentColor"/>
+                        <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>朝友桌球會內賽分級系統</span>
+                </div>
+                <span id="sync-status" class="sync-badge">載入中...</span>
             </div>
             <nav>
                 <button class="nav-btn active" id="nav-dashboard">
@@ -80,8 +83,8 @@
                     <p style="font-size:12px; color:var(--text-secondary); margin-top:2px;">俱樂部數據概覽、會員級別分佈狀況與名人堂積分排行榜</p>
                 </div>
                 <div style="font-size:11px; text-align:right; color:var(--text-secondary); background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:6px 12px; border-radius:8px; display:flex; flex-direction:column; gap:2px; font-weight:600;">
-                    <div>系統版本：<span style="color:var(--accent-emerald); font-weight:bold;">v1.1.0</span></div>
-                    <div>最後更新：<span>2026-05-30</span></div>
+                    <div>系統版本：<span style="color:var(--accent-emerald); font-weight:bold;">v1.2.0</span></div>
+                    <div>最後更新：<span>2026-06-02</span></div>
                 </div>
             </div>
 
@@ -181,93 +184,165 @@
                 <div style="text-align:center; margin-bottom:24px;">
                     <h2 style="font-size:22px; font-weight:900;">🏓 雙打賽事積分登錄</h2>
                     <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
-                        選擇參賽的四名隊員，系統將依據雙方當前積分，進行實時 Elo 動態變動預測。
+                        登錄今天會內賽的比賽成績，系統將自動計算雙打 Elo 積分變動並即時更新等級。
                         <a href="javascript:void(0)" onclick="openModal('k-guide-modal')" style="color:var(--accent-emerald); font-weight:700; text-decoration:none; margin-left:4px;">📖 查看 K 值計算說明</a>
                     </p>
                 </div>
 
-                <div class="glass-panel" style="padding:24px; margin-bottom:24px;">
-                    <!-- 雙打選手組合選擇 -->
-                    <div class="match-setup-grid">
-                        <!-- Team 1 -->
-                        <div class="glass-card team-setup-panel t1">
-                            <div class="team-header-title">🔵 Team 1 (隊伍一)</div>
-                            <div class="player-selector-box">
-                                <label class="player-selector-label">第一位球員 (球員 A)</label>
-                                <select class="form-control" id="mr-t1p1"></select>
+                <!-- 賽事登錄模式分頁頁籤 -->
+                <div style="display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:12px;">
+                    <button class="nav-btn active" id="btn-match-single-tab" style="padding:8px 16px; font-size:13px; border:1px solid rgba(255,255,255,0.08); flex-grow:1; justify-content:center;">🏓 單場賽事登錄</button>
+                    <button class="nav-btn" id="btn-match-batch-tab" style="padding:8px 16px; font-size:13px; border:1px solid rgba(255,255,255,0.08); flex-grow:1; justify-content:center;">⚡ 批次快速登錄 / 貼上成績</button>
+                </div>
+
+                <!-- A. 單場賽事登錄容器 -->
+                <div id="match-single-container">
+                    <div class="glass-panel" style="padding:24px; margin-bottom:24px;">
+                        <!-- 雙打選手組合選擇 -->
+                        <div class="match-setup-grid">
+                            <!-- Team 1 -->
+                            <div class="glass-card team-setup-panel t1">
+                                <div class="team-header-title">🔵 Team 1 (隊伍一)</div>
+                                <div class="player-selector-box">
+                                    <label class="player-selector-label">第一位球員 (球員 A)</label>
+                                    <select class="form-control" id="mr-t1p1"></select>
+                                </div>
+                                <div class="player-selector-box" style="margin-bottom:0;">
+                                    <label class="player-selector-label">第二位球員 (球員 B)</label>
+                                    <select class="form-control" id="mr-t1p2"></select>
+                                </div>
                             </div>
-                            <div class="player-selector-box" style="margin-bottom:0;">
-                                <label class="player-selector-label">第二位球員 (球員 B)</label>
-                                <select class="form-control" id="mr-t1p2"></select>
+
+                            <!-- VS 分隔線 -->
+                            <div class="vs-divider">VS</div>
+
+                            <!-- Team 2 -->
+                            <div class="glass-card team-setup-panel t2">
+                                <div class="team-header-title">🔴 Team 2 (隊伍二)</div>
+                                <div class="player-selector-box">
+                                    <label class="player-selector-label">第一位球員 (球員 C)</label>
+                                    <select class="form-control" id="mr-t2p1"></select>
+                                </div>
+                                <div class="player-selector-box" style="margin-bottom:0;">
+                                    <label class="player-selector-label">第二位球員 (球員 D)</label>
+                                    <select class="form-control" id="mr-t2p2"></select>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- VS 分隔線 -->
-                        <div class="vs-divider">VS</div>
-
-                        <!-- Team 2 -->
-                        <div class="glass-card team-setup-panel t2">
-                            <div class="team-header-title">🔴 Team 2 (隊伍二)</div>
-                            <div class="player-selector-box">
-                                <label class="player-selector-label">第一位球員 (球員 C)</label>
-                                <select class="form-control" id="mr-t2p1"></select>
+                        <!-- 即時積分變動預測面板 (由 JS 動態顯示) -->
+                        <div class="predictor-glow-panel" id="mr-predictor-panel" style="display:none;">
+                            <div class="predictor-header">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="color:var(--accent-gold);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                <span>積分實時變動預估 (Live Predictor)</span>
                             </div>
-                            <div class="player-selector-box" style="margin-bottom:0;">
-                                <label class="player-selector-label">第二位球員 (球員 D)</label>
-                                <select class="form-control" id="mr-t2p2"></select>
+                            <div class="predictor-cols">
+                                <!-- Team 1 Win scenario -->
+                                <div class="predictor-col-team t1">
+                                    <div class="predictor-team-title" style="color:var(--accent-emerald)">🔥 若 Team 1 (隊伍一) 獲勝：</div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pA"></div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pB"></div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pC"></div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pD"></div>
+                                </div>
+                                <!-- Team 2 Win scenario -->
+                                <div class="predictor-col-team t2">
+                                    <div class="predictor-team-title" style="color:var(--accent-emerald)">🔥 若 Team 2 (隊伍二) 獲勝：</div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pA"></div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pB"></div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pC"></div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pD"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 即時積分變動預測面板 (由 JS 動態顯示) -->
-                    <div class="predictor-glow-panel" id="mr-predictor-panel" style="display:none;">
-                        <div class="predictor-header">
-                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="color:var(--accent-gold);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                            <span>積分實時變動預估 (Live Predictor)</span>
-                        </div>
-                        <div class="predictor-cols">
-                            <!-- Team 1 Win scenario -->
-                            <div class="predictor-col-team t1">
-                                <div class="predictor-team-title" style="color:var(--accent-emerald)">🔥 若 Team 1 (隊伍一) 獲勝：</div>
-                                <div class="predictor-player-row" id="pred-t1-win-pA"></div>
-                                <div class="predictor-player-row" id="pred-t1-win-pB"></div>
-                                <div class="predictor-player-row" id="pred-t1-win-pC"></div>
-                                <div class="predictor-player-row" id="pred-t1-win-pD"></div>
+                    <!-- 比分與局數錄入 -->
+                    <div class="glass-panel score-entry-panel">
+                        <h3 style="font-size:15px; font-weight:800; text-align:center;">🏆 輸入對戰大局比分</h3>
+                        <p style="font-size:11px; color:var(--text-secondary); text-align:center; margin-top:2px;">
+                            請填寫雙方大局比分（例如 3 : 1）來計算勝負與變動積分。
+                        </p>
+                        
+                        <div class="score-inputs-row">
+                            <div style="text-align:center;">
+                                <div style="font-size:11px; color:var(--accent-blue); font-weight:700; margin-bottom:4px;">Team 1 局數</div>
+                                <input type="number" class="score-num-input" id="mr-score-t1" placeholder="0" min="0" max="5">
                             </div>
-                            <!-- Team 2 Win scenario -->
-                            <div class="predictor-col-team t2">
-                                <div class="predictor-team-title" style="color:var(--accent-emerald)">🔥 若 Team 2 (隊伍二) 獲勝：</div>
-                                <div class="predictor-player-row" id="pred-t2-win-pA"></div>
-                                <div class="predictor-player-row" id="pred-t2-win-pB"></div>
-                                <div class="predictor-player-row" id="pred-t2-win-pC"></div>
-                                <div class="predictor-player-row" id="pred-t2-win-pD"></div>
+                            <span style="font-size:36px; font-weight:900; color:var(--text-muted); margin-top:14px;">:</span>
+                            <div style="text-align:center;">
+                                <div style="font-size:11px; color:var(--accent-magenta); font-weight:700; margin-bottom:4px;">Team 2 局數</div>
+                                <input type="number" class="score-num-input" id="mr-score-t2" placeholder="0" min="0" max="5">
                             </div>
                         </div>
+
+                        <button class="btn-primary btn-submit-match" id="mr-submit-btn">
+                            🚀 提交比賽紀錄並更新積分
+                        </button>
                     </div>
                 </div>
 
-                <!-- 比分與局數錄入 -->
-                <div class="glass-panel score-entry-panel">
-                    <h3 style="font-size:15px; font-weight:800; text-align:center;">🏆 輸入對戰大局比分</h3>
-                    <p style="font-size:11px; color:var(--text-secondary); text-align:center; margin-top:2px;">
-                        請填寫雙方大局比分（例如 3 : 1）來計算勝負與變動積分。
-                    </p>
-                    
-                    <div class="score-inputs-row">
-                        <div style="text-align:center;">
-                            <div style="font-size:11px; color:var(--accent-blue); font-weight:700; margin-bottom:4px;">Team 1 局數</div>
-                            <input type="number" class="score-num-input" id="mr-score-t1" placeholder="0" min="0" max="5">
+                <!-- B. 批次快速登錄容器 -->
+                <div id="match-batch-container" style="display:none;">
+                    <div class="glass-panel" style="padding:24px; margin-bottom:24px;">
+                        <h3 style="font-size:15px; font-weight:800; margin-bottom:12px;">📝 貼上今日會內賽成績</h3>
+                        <p style="font-size:12px; color:var(--text-secondary); line-height:1.5; margin-bottom:16px;">
+                            請在下方貼上或輸入比賽成績，支援每行一場對戰。系統會智慧識別選手與比分，並將不合格式的行數自動標記。
+                        </p>
+                        
+                        <!-- 支援格式提示說明 -->
+                        <div class="glass-card" style="padding:12px; margin-bottom:16px; font-size:11px; color:var(--text-secondary); border-color:rgba(59,130,246,0.15);">
+                            <span style="color:var(--accent-emerald); font-weight:700; display:block; margin-bottom:4px;">💡 支援格式範例：</span>
+                            * <strong>文字分隔格式</strong>：<code>戴資穎/莊智淵 3:1 盧彥勳/林志傑</code> (名字中間可使用斜線、頓號、空格、加號連接)<br>
+                            * <strong>CSV/Excel 格式 A</strong>：<code>戴資穎,莊智淵,盧彥勳,林志傑,3,1</code> (4 位選手 + 2 個比分)<br>
+                            * <strong>CSV/Excel 格式 B</strong>：<code>戴資穎,莊智淵,3,1,盧彥勳,林志傑</code> (2 隊員 + 比分 + 2 隊員)
                         </div>
-                        <span style="font-size:36px; font-weight:900; color:var(--text-muted); margin-top:14px;">:</span>
-                        <div style="text-align:center;">
-                            <div style="font-size:11px; color:var(--accent-magenta); font-weight:700; margin-bottom:4px;">Team 2 局數</div>
-                            <input type="number" class="score-num-input" id="mr-score-t2" placeholder="0" min="0" max="5">
+
+                        <div class="setting-group">
+                            <textarea class="form-control" id="batch-matches-input" rows="8" placeholder="請在此貼上成績，例如：&#10;戴資穎/莊智淵 3:1 盧彥勳/林志傑&#10;王建民、郭台銘 2:3 周杰倫、柯文哲" style="font-family:monospace; font-size:12px; background:rgba(0,0,0,0.2); resize:vertical;"></textarea>
                         </div>
+
+                        <!-- 批次設定控制 -->
+                        <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin-top:16px; background:rgba(255,255,255,0.01); padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.04);">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <input type="checkbox" id="batch-auto-register" checked style="width:16px; height:16px; cursor:pointer;">
+                                <label for="batch-auto-register" style="font-size:12px; font-weight:600; cursor:pointer;">自動建檔未註冊球員</label>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                                <span style="font-size:12px; color:var(--text-secondary);">新球員初始積分:</span>
+                                <input type="number" id="batch-default-rating" value="1200" min="0" max="3000" class="form-control" style="width:80px; height:28px; font-size:12px; padding:0 8px; text-align:center;">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:12px; margin-top:20px;">
+                            <button class="btn-primary" id="btn-parse-batch" style="flex:1.5; justify-content:center; height:40px; font-size:13px;">
+                                🔍 開始解析與預覽
+                            </button>
+                            <button class="btn-secondary" id="btn-trigger-batch-csv" style="border-color:rgba(6,182,212,0.3); background:rgba(6,182,212,0.04); color:#06b6d4; height:40px; font-size:13px; flex:1.2; justify-content:center;">
+                                📥 載入 CSV 檔案
+                            </button>
+                            <button class="btn-secondary" id="btn-clear-batch" style="border-color:rgba(239, 68, 68, 0.2); background:rgba(239, 68, 68, 0.03); color:var(--accent-crimson); height:40px; font-size:13px; flex:1; justify-content:center;">
+                                🧹 清除
+                            </button>
+                        </div>
+                        <input type="file" id="batch-csv-file-input" accept=".csv,.txt" style="display:none;">
                     </div>
 
-                    <button class="btn-primary btn-submit-match" id="mr-submit-btn">
-                        🚀 提交比賽紀錄並更新積分
-                    </button>
+                    <!-- 實時預覽區域 -->
+                    <div id="batch-preview-area" class="glass-panel" style="padding:24px; display:none;">
+                        <h3 style="font-size:15px; font-weight:800; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                            <span>📋 解析結果預覽</span>
+                            <span id="batch-summary-badge" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(255,255,255,0.06); color:var(--text-secondary); font-weight:700;"></span>
+                        </h3>
+
+                        <div class="batch-preview-list" id="batch-preview-container" style="display:flex; flex-direction:column; gap:10px; max-height:360px; overflow-y:auto; padding-right:6px; margin-bottom:16px;">
+                            <!-- 由 JS 動態生成項目 -->
+                        </div>
+
+                        <button class="btn-primary btn-submit-match" id="btn-submit-batch" style="width:100%; height:46px; font-size:14px; justify-content:center;">
+                            🚀 確認匯入並計算積分
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -286,8 +361,11 @@
             </div>
 
             <!-- 篩選列 -->
-            <div class="glass-panel" style="padding:16px; margin-bottom:20px; display:flex; gap:16px; align-items:center;">
+            <div class="glass-panel" style="padding:16px; margin-bottom:20px; display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
                 <input type="text" class="search-input" id="history-search" placeholder="依球員姓名篩選..." style="max-width:280px; width:100%;">
+                <button class="btn-primary" id="btn-open-daily-report" style="height:40px; font-size:13px; font-weight:700; background:linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);">
+                    📋 產生單日積分表
+                </button>
             </div>
 
             <!-- 表格容器 -->
@@ -667,6 +745,34 @@
 
                 <div style="text-align: right; margin-top: 10px;">
                     <button class="btn-primary" onclick="closeModal('k-guide-modal')" style="height: 38px; min-width: 100px; display: inline-flex; justify-content: center; box-shadow: none;">我知道了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- E. 積分日報表彈窗 (Daily Rating Report Modal) -->
+    <div class="modal-overlay" id="daily-report-modal">
+        <div class="glass-panel modal-container large" style="max-width: 960px; max-height: 90vh;">
+            <div class="modal-header no-print">
+                <h3 class="modal-title">📋 產生存款積分日報表</h3>
+                <button class="modal-close-btn" onclick="closeModal('daily-report-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- 設定列 -->
+                <div class="no-print" style="display:flex; gap:16px; align-items:center; margin-bottom:20px; background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:13px; font-weight:700; color:var(--text-primary);">選擇對戰日期:</span>
+                        <select class="select-filter" id="rep-date-select" style="height:36px; font-size:12px; padding:0 12px;"></select>
+                    </div>
+                    <div style="margin-left:auto; display:flex; gap:10px;">
+                        <button class="btn-primary" id="btn-print-report" style="height:36px; font-size:12px; padding:0 16px; background:linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%); border:none; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);">🖨️ 列印 / 儲存 PDF</button>
+                        <button class="btn-secondary" id="btn-export-report-csv" style="height:36px; font-size:12px; padding:0 16px; border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.04); color:var(--accent-emerald);">📥 匯出 CSV</button>
+                    </div>
+                </div>
+
+                <!-- 報表列印範圍 (模擬圖片中的格式) -->
+                <div id="print-report-area" style="background:#ffffff; color:#000000; padding:30px; border-radius:8px; font-family:'Noto Sans TC', sans-serif; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow-x:auto;">
+                    <!-- 由 JS 動態生成報表內容 -->
                 </div>
             </div>
         </div>

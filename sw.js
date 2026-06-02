@@ -1,4 +1,4 @@
-const CACHE_NAME = "chaoyou-pingpong-v3";
+const CACHE_NAME = "chaoyou-pingpong-v7";
 const ASSETS = [
   "./",
   "./index.html",
@@ -36,6 +36,11 @@ self.addEventListener("activate", (e) => {
 
 // 攔截請求並採用快取優先 (Cache-First) 策略
 self.addEventListener("fetch", (e) => {
+  // 排除 API 請求，直接走網路（避免同步資料被 Service Worker 快取或攔截）
+  if (e.request.url.includes("/api/")) {
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {
