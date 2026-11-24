@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-readonly-bundle="true">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>朝友桌球俱樂部 - 雙打會內賽 10 級分級與 Elo 積分系統</title>
+    <link rel="manifest" href="manifest.json?v=2">
+    <meta name="theme-color" content="#0F766E">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="朝友桌球分級">
+    <link rel="icon" href="favicon.ico?v=2" sizes="any">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- 頂部石墨深炭灰導航欄 -->
+    <header>
+        <div class="header-container">
+            <div class="header-brand-wrap">
+                <div class="logo">
+                    <span class="logo-mark" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <circle cx="12" cy="12" r="9"/>
+                            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                        </svg>
+                    </span>
+                    <span>朝友桌球會內賽分級系統</span>
+                </div>
+                <span id="sync-status" class="sync-badge" title="點擊手動向伺服器同步最新資料">載入中...</span>
+                <button type="button" id="btn-readonly-lock" class="readonly-lock-btn" style="display:none;" title="清除記住的密碼並重新上鎖">上鎖</button>
+            </div>
+            <nav aria-label="主導覽列">
+                <button class="nav-btn active" id="nav-dashboard">控制面板</button>
+                <button class="nav-btn" id="nav-members">會員管理</button>
+                <button class="nav-btn" id="nav-match-recorder">賽事登錄</button>
+                <button class="nav-btn" id="nav-match-history">歷史賽事</button>
+                <button class="nav-btn" id="nav-settings">系統設定</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- 1. 控制面板 Dashboard -->
+        <section class="view-panel active" id="view-dashboard">
+            <div class="section-header">
+                <div>
+                    <h1 class="page-title">系統控制面板</h1>
+                    <p class="page-subtitle">俱樂部戰績概覽、10 級人數分佈與名人堂積分排行</p>
+                </div>
+                <div class="version-pill">
+                    <span>系統版本 <strong id="app-version-label">v2.0.0</strong></span>
+                    <span class="version-sep">·</span>
+                    <span>更新 <span id="app-updated-label">2026-11-24</span></span>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="surface-card stat-card accent-teal">
+                    <div class="stat-label">俱樂部會員數</div>
+                    <div class="stat-val" id="db-stat-members">0</div>
+                </div>
+                <div class="surface-card stat-card accent-green">
+                    <div class="stat-label">總雙打比賽場次</div>
+                    <div class="stat-val" id="db-stat-matches">0</div>
+                </div>
+                <div class="surface-card stat-card accent-orange">
+                    <div class="stat-label">今日新增賽事</div>
+                    <div class="stat-val" id="db-stat-today-matches">0</div>
+                </div>
+                <div class="surface-card stat-card accent-amber">
+                    <div class="stat-label">全會平均 Elo 積分</div>
+                    <div class="stat-val" id="db-stat-avg-rating">1200</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="dashboard-main-col">
+                    <div class="surface-card panel-box">
+                        <h2 class="panel-title">俱樂部等級分佈狀況</h2>
+                        <div id="db-level-chart-container" class="chart-box"></div>
+                    </div>
+
+                    <div class="surface-card panel-box">
+                        <h2 class="panel-title">最新雙打賽事動態</h2>
+                        <div class="timeline" id="db-recent-matches-timeline"></div>
+                    </div>
+                </div>
+
+                <div class="surface-card panel-box">
+                    <h2 class="panel-title">名人堂積分排行榜 (Top 10)</h2>
+                    <p class="panel-desc">點擊任一球員可查看積分走勢與最佳拍檔</p>
+                    <div class="leaderboard-list" id="db-leaderboard-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 會員管理 Members -->
+        <section class="view-panel" id="view-members">
+            <div class="section-header">
+                <div>
+                    <h1 class="page-title">俱樂部會員列表</h1>
+                    <p class="page-subtitle">搜尋、依等級篩選與檢視個人積分曲線及搭檔戰績</p>
+                </div>
+                <button class="btn btn-primary" id="btn-open-add-member">+ 新增會員</button>
+            </div>
+
+            <div class="surface-card filter-bar">
+                <input type="text" class="form-control search-input" id="member-search" placeholder="搜尋會員姓名...">
+                <div class="filter-controls">
+                    <select class="select-filter" id="member-level-filter" aria-label="依等級篩選">
+                        <option value="all">全部等級 (L1~L10)</option>
+                        <option value="1">L1 頂級一階</option>
+                        <option value="2">L2 頂級二階</option>
+                        <option value="3">L3 高級一階</option>
+                        <option value="4">L4 高級二階</option>
+                        <option value="5">L5 中高級一階</option>
+                        <option value="6">L6 中高級二階</option>
+                        <option value="7">L7 中級一階</option>
+                        <option value="8">L8 中級二階</option>
+                        <option value="9">L9 初級一階</option>
+                        <option value="10">L10 初級二階</option>
+                    </select>
+                    <select class="select-filter" id="member-sort-select" aria-label="排序方式">
+                        <option value="rating-desc">積分由高至低</option>
+                        <option value="rating-asc">積分由低至高</option>
+                        <option value="winrate-desc">勝率由高至低</option>
+                        <option value="matches-desc">出賽場次由多至少</option>
+                    </select>
+                    <span class="filter-count" id="member-filter-count"></span>
+                </div>
+            </div>
+
+            <div class="members-grid" id="members-cards-grid"></div>
+        </section>
+
+        <!-- 3. 賽事登錄 Match Recorder -->
+        <section class="view-panel" id="view-match-recorder">
+            <div class="match-recorder-container">
+                <div class="section-header">
+                    <div>
+                        <h1 class="page-title">雙打賽事積分登錄</h1>
+                        <p class="page-subtitle">
+                            支援場邊即時選員、補登往日賽程或整批貼上成績
+                            <button type="button" class="link-btn" onclick="openModal('k-guide-modal')">查看 K 值計算說明</button>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="subtab-bar">
+                    <button class="subtab-btn active" id="btn-match-single-tab">單場賽事登錄</button>
+                    <button class="subtab-btn" id="btn-match-batch-tab">批次快速登錄 / 貼上成績</button>
+                </div>
+
+                <!-- A. 單場賽事登錄 -->
+                <div id="match-single-container">
+                    <div class="surface-card panel-box">
+                        <div class="date-row">
+                            <label class="setting-label" for="mr-match-date" style="margin-bottom:0;">比賽日期</label>
+                            <input type="date" class="form-control date-input" id="mr-match-date">
+                            <span class="date-hint">預設今天；若補登過去日期，系統會自動依時間軸重算後續積分</span>
+                        </div>
+
+                        <div class="match-setup-grid">
+                            <div class="team-setup-panel t1">
+                                <div class="team-header-title">Team 1（隊伍一）</div>
+                                <div class="player-selector-box">
+                                    <label class="player-selector-label" for="mr-t1p1-search">第一位球員 (A)</label>
+                                    <div class="player-combobox">
+                                        <input type="hidden" id="mr-t1p1">
+                                        <input type="text" class="form-control combobox-input" id="mr-t1p1-search" placeholder="輸入姓名或等級搜尋..." autocomplete="off">
+                                        <button type="button" class="combobox-clear" id="mr-t1p1-clear" title="清除">✕</button>
+                                        <div class="combobox-dropdown" id="mr-t1p1-dropdown"></div>
+                                    </div>
+                                </div>
+                                <div class="player-selector-box" style="margin-bottom:0;">
+                                    <label class="player-selector-label" for="mr-t1p2-search">第二位球員 (B)</label>
+                                    <div class="player-combobox">
+                                        <input type="hidden" id="mr-t1p2">
+                                        <input type="text" class="form-control combobox-input" id="mr-t1p2-search" placeholder="輸入姓名或等級搜尋..." autocomplete="off">
+                                        <button type="button" class="combobox-clear" id="mr-t1p2-clear" title="清除">✕</button>
+                                        <div class="combobox-dropdown" id="mr-t1p2-dropdown"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="vs-divider">VS</div>
+
+                            <div class="team-setup-panel t2">
+                                <div class="team-header-title">Team 2（隊伍二）</div>
+                                <div class="player-selector-box">
+                                    <label class="player-selector-label" for="mr-t2p1-search">第一位球員 (C)</label>
+                                    <div class="player-combobox">
+                                        <input type="hidden" id="mr-t2p1">
+                                        <input type="text" class="form-control combobox-input" id="mr-t2p1-search" placeholder="輸入姓名或等級搜尋..." autocomplete="off">
+                                        <button type="button" class="combobox-clear" id="mr-t2p1-clear" title="清除">✕</button>
+                                        <div class="combobox-dropdown" id="mr-t2p1-dropdown"></div>
+                                    </div>
+                                </div>
+                                <div class="player-selector-box" style="margin-bottom:0;">
+                                    <label class="player-selector-label" for="mr-t2p2-search">第二位球員 (D)</label>
+                                    <div class="player-combobox">
+                                        <input type="hidden" id="mr-t2p2">
+                                        <input type="text" class="form-control combobox-input" id="mr-t2p2-search" placeholder="輸入姓名或等級搜尋..." autocomplete="off">
+                                        <button type="button" class="combobox-clear" id="mr-t2p2-clear" title="清除">✕</button>
+                                        <div class="combobox-dropdown" id="mr-t2p2-dropdown"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="predictor-panel" id="mr-predictor-panel" style="display:none;">
+                            <div class="predictor-header">實時勝負積分變動預估</div>
+                            <div class="predictor-cols">
+                                <div class="predictor-col-team t1">
+                                    <div class="predictor-team-title">若 Team 1 獲勝</div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pA"></div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pB"></div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pC"></div>
+                                    <div class="predictor-player-row" id="pred-t1-win-pD"></div>
+                                </div>
+                                <div class="predictor-col-team t2">
+                                    <div class="predictor-team-title">若 Team 2 獲勝</div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pA"></div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pB"></div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pC"></div>
+                                    <div class="predictor-player-row" id="pred-t2-win-pD"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="surface-card panel-box" style="margin-top:16px;">
+                        <h2 class="panel-title" style="text-align:center;">輸入對戰大局比分</h2>
+                        <div class="quick-scores-row">
+                            <button type="button" class="btn btn-secondary quick-score-btn" data-s1="3" data-s2="0">3 : 0</button>
+                            <button type="button" class="btn btn-secondary quick-score-btn" data-s1="3" data-s2="1">3 : 1</button>
+                            <button type="button" class="btn btn-secondary quick-score-btn" data-s1="3" data-s2="2">3 : 2</button>
+                            <button type="button" class="btn btn-secondary quick-score-btn" data-s1="0" data-s2="3">0 : 3</button>
+                            <button type="button" class="btn btn-secondary quick-score-btn" data-s1="1" data-s2="3">1 : 3</button>
+                            <button type="button" class="btn btn-secondary quick-score-btn" data-s1="2" data-s2="3">2 : 3</button>
+                        </div>
+
+                        <div class="score-inputs-row">
+                            <div class="score-col">
+                                <div class="score-team-label t1">Team 1 局數</div>
+                                <input type="number" class="score-num-input" id="mr-score-t1" placeholder="0" min="0" max="9">
+                            </div>
+                            <span class="score-vs-sep">:</span>
+                            <div class="score-col">
+                                <div class="score-team-label t2">Team 2 局數</div>
+                                <input type="number" class="score-num-input" id="mr-score-t2" placeholder="0" min="0" max="9">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary btn-submit-match" id="mr-submit-btn">提交比賽紀錄並更新積分</button>
+                    </div>
+                </div>
+
+                <!-- B. 批次快速登錄 -->
+                <div id="match-batch-container" style="display:none;">
+                    <div class="surface-card panel-box">
+                        <div class="date-row">
+                            <label class="setting-label" for="batch-match-date" style="margin-bottom:0;">批次比賽日期</label>
+                            <input type="date" class="form-control date-input" id="batch-match-date">
+                            <span class="date-hint">將套用至本批所有賽事</span>
+                        </div>
+
+                        <div class="format-guide-box">
+                            <div class="format-guide-title">支援貼上格式範例（亦支援行尾括號小局分）</div>
+                            <div>文字格式：<code>張三/李四 3:1 王五/趙六</code> 或 <code>張三/王五 2:3 李四/趙六 (11:9, 5:11, 11:7, 8:11, 9:11)</code></div>
+                            <div>CSV 格式：<code>張三,李四,王五,趙六,3,1</code> 或 <code>張三,李四,3,1,王五,趙六</code></div>
+                        </div>
+
+                        <div class="setting-group">
+                            <textarea class="form-control code-textarea" id="batch-matches-input" rows="8" placeholder="請貼上今日賽事成績，每行一場..."></textarea>
+                        </div>
+
+                        <div class="batch-options-bar">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="batch-auto-register" checked>
+                                <span>自動建檔未註冊球員</span>
+                            </label>
+                            <div class="inline-field">
+                                <span>新球員初始積分</span>
+                                <input type="number" id="batch-default-rating" value="1200" min="0" max="3000" class="form-control compact" style="width:88px; text-align:center;">
+                            </div>
+                        </div>
+
+                        <div class="batch-actions-row">
+                            <button class="btn btn-primary" id="btn-parse-batch">解析與預覽</button>
+                            <button class="btn btn-secondary" id="btn-trigger-batch-csv">載入 CSV 檔案</button>
+                            <button class="btn btn-danger-outline" id="btn-clear-batch">清除</button>
+                        </div>
+                        <input type="file" id="batch-csv-file-input" accept=".csv,.txt" style="display:none;">
+                    </div>
+
+                    <div id="batch-preview-area" class="surface-card panel-box" style="display:none; margin-top:16px;">
+                        <div class="preview-header">
+                            <h2 class="panel-title" style="margin-bottom:0;">解析結果預覽</h2>
+                            <span id="batch-summary-badge" class="summary-pill"></span>
+                        </div>
+                        <div class="batch-preview-list" id="batch-preview-container"></div>
+                        <button class="btn btn-primary btn-submit-match" id="btn-submit-batch">確認匯入並計算積分</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 歷史賽事 Match History -->
+        <section class="view-panel" id="view-match-history">
+            <div class="section-header">
+                <div>
+                    <h1 class="page-title">歷史雙打賽事紀錄</h1>
+                    <p class="page-subtitle">支援依球員或日期篩選；刪除任一場次將自動重算該場之後的積分</p>
+                </div>
+                <button class="btn btn-primary" id="btn-open-daily-report">產生單日積分表</button>
+            </div>
+
+            <div class="surface-card filter-bar">
+                <input type="text" class="form-control search-input" id="history-search" placeholder="依球員姓名篩選...">
+                <div class="filter-controls">
+                    <input type="date" class="form-control date-input" id="history-date-filter" aria-label="依日期篩選">
+                    <button type="button" class="btn btn-secondary" id="btn-clear-history-date">全部日期</button>
+                </div>
+            </div>
+
+            <div class="surface-card table-panel">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>對戰時間</th>
+                            <th>Team 1（隊伍一）</th>
+                            <th style="text-align:center;">比分與局分</th>
+                            <th>Team 2（隊伍二）</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-tbody"></tbody>
+                </table>
+            </div>
+
+            <div class="pagination-bar">
+                <button class="btn btn-secondary" id="history-prev-btn">上一頁</button>
+                <span id="history-page-info" class="page-info">1 / 1 頁</span>
+                <button class="btn btn-secondary" id="history-next-btn">下一頁</button>
+            </div>
+        </section>
+
+        <!-- 5. 系統設定 Settings -->
+        <section class="view-panel" id="view-settings">
+            <div class="section-header">
+                <div>
+                    <h1 class="page-title">系統設定面板</h1>
+                    <p class="page-subtitle">雙打計分公式、10 級分數門檻與資料備份還原</p>
+                </div>
+            </div>
+
+            <div class="settings-grid">
+                <div class="surface-card panel-box">
+                    <h2 class="panel-title">雙打 Elo 核心公式與等級門檻</h2>
+
+                    <div class="setting-group">
+                        <label class="setting-label" for="set-elo-mode">雙打積分分配模式</label>
+                        <select class="form-control" id="set-elo-mode">
+                            <option value="weight">模式 A：個人期望值權重制（防抱分推薦）</option>
+                            <option value="equal">模式 B：隊伍平均值平分制（經典傳統）</option>
+                        </select>
+                        <span class="setting-desc">模式 A 依個人分數對抗對手平均分；模式 B 同隊兩人增減分數完全相同。</span>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="setting-label" for="set-k-factor">單場積分敏感度 (K-Factor)</label>
+                        <input type="number" class="form-control" id="set-k-factor" min="4" max="128" value="32">
+                        <span class="setting-desc">
+                            預設值 32，數值越大單場加減分幅度越明顯。
+                            <button type="button" class="link-btn" onclick="openModal('k-guide-modal')">查看計算範例</button>
+                        </span>
+                    </div>
+
+                    <h3 class="subpanel-title">10 級名稱與積分門檻</h3>
+                    <div class="levels-header-row">
+                        <div>等級</div>
+                        <div>等級名稱</div>
+                        <div>下限</div>
+                        <div>上限</div>
+                    </div>
+                    <div class="levels-config-list" id="settings-levels-list"></div>
+
+                    <div class="btn-row-2" style="margin-top:14px;">
+                        <button class="btn btn-secondary" id="btn-export-levels-csv">匯出等級規則 CSV</button>
+                        <button class="btn btn-secondary" id="btn-trigger-levels-csv-import">匯入等級規則 CSV</button>
+                        <input type="file" id="levels-csv-import-input" accept=".csv" style="display:none;">
+                    </div>
+
+                    <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top:16px;">保存公式與等級設定</button>
+                </div>
+
+                <div class="settings-side-col">
+                    <div class="surface-card panel-box">
+                        <h2 class="panel-title">資料庫備份與還原 (JSON)</h2>
+                        <p class="panel-desc">伺服器端每次寫入會自動備份至 <code>data/backups/</code>；您也可手動下載或選檔還原。</p>
+                        <div class="btn-row-2" style="margin-bottom:12px;">
+                            <button class="btn btn-primary" id="btn-download-backup-json">一鍵下載 JSON 備份檔</button>
+                            <button class="btn btn-secondary" id="btn-trigger-json-restore">選取 JSON 檔還原</button>
+                            <input type="file" id="json-restore-file-input" accept=".json" style="display:none;">
+                        </div>
+                        <details class="backup-details">
+                            <summary>檢視或手動貼上 JSON 備份文字</summary>
+                            <textarea class="form-control code-textarea" id="set-backup-area" rows="5" style="margin-top:10px;"></textarea>
+                            <button class="btn btn-secondary btn-full" id="btn-import-backup" style="margin-top:8px;">從上方文字區還原</button>
+                        </details>
+                    </div>
+
+                    <div class="surface-card panel-box">
+                        <h2 class="panel-title">會員名單 CSV 管理</h2>
+                        <p class="panel-desc">相容 Excel 中文格式，可批次匯出或依名單更新會員初始／當前積分。</p>
+                        <div class="btn-row-2">
+                            <button class="btn btn-secondary" id="btn-export-csv">匯出會員 CSV</button>
+                            <button class="btn btn-secondary" id="btn-trigger-csv-import">匯入會員 CSV</button>
+                            <input type="file" id="csv-import-input" accept=".csv" style="display:none;">
+                        </div>
+                    </div>
+
+                    <div class="surface-card panel-box">
+                        <h2 class="panel-title">示範體驗數據</h2>
+                        <p class="panel-desc">載入 10 位虛擬球員與 6 場示範賽（會覆蓋目前資料，使用前請先備份）。</p>
+                        <button class="btn btn-secondary btn-full" id="btn-load-demo">載入示範數據</button>
+                    </div>
+
+                    <div class="surface-card panel-box danger-zone">
+                        <h2 class="panel-title danger-title">危險操作區</h2>
+                        <p class="panel-desc">清空目前所有會員與歷史對戰資料。</p>
+                        <button class="btn btn-danger btn-full" id="btn-reset-db">清空並重置所有資料</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- A. 會員詳細檔案 Modal -->
+    <div class="modal-overlay" id="member-detail-modal">
+        <div class="surface-card modal-container large">
+            <div class="modal-header">
+                <h3 class="modal-title">會員詳細個人檔案</h3>
+                <button class="modal-close-btn" onclick="closeModal('member-detail-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-header-grid">
+                    <div class="avatar profile-avatar" id="md-avatar"></div>
+                    <div>
+                        <div id="md-name-display-box" class="inline-edit-row">
+                            <div class="player-name profile-name" id="md-name"></div>
+                            <button id="md-edit-name-btn" class="icon-edit-btn" title="修改姓名">✎</button>
+                        </div>
+                        <div id="md-name-edit-box" class="inline-edit-row" style="display:none;">
+                            <input type="text" id="md-name-input" class="form-control compact" style="width:140px;">
+                            <button id="md-save-name-btn" class="btn btn-primary btn-sm">儲存</button>
+                            <button id="md-cancel-name-btn" class="btn btn-secondary btn-sm">取消</button>
+                        </div>
+                        <div class="level-tag" id="md-level-badge" style="margin-top:6px;"></div>
+                    </div>
+                    <div class="profile-rating-wrap">
+                        <span class="profile-rating-label">當前積分</span>
+                        <div id="md-rating-display-box" class="inline-edit-row">
+                            <span id="md-rating" class="profile-rating-val">1200</span>
+                            <button id="md-edit-rating-btn" class="icon-edit-btn" title="手動調整積分">✎</button>
+                        </div>
+                        <div id="md-rating-edit-box" class="inline-edit-row" style="display:none;">
+                            <input type="number" id="md-rating-input" class="form-control compact" style="width:92px; text-align:right;" min="0" max="9999">
+                            <button id="md-save-rating-btn" class="btn btn-primary btn-sm">儲存</button>
+                            <button id="md-cancel-rating-btn" class="btn btn-secondary btn-sm">取消</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-main-stats">
+                    <div class="sub-card">
+                        <div class="member-detail-label">總出賽場次</div>
+                        <div id="md-stat-played" class="stat-num-md">0</div>
+                    </div>
+                    <div class="sub-card border-green">
+                        <div class="member-detail-label">總勝場數</div>
+                        <div id="md-stat-wins" class="stat-num-md text-green">0</div>
+                    </div>
+                    <div class="sub-card border-red">
+                        <div class="member-detail-label">總敗場數</div>
+                        <div id="md-stat-losses" class="stat-num-md text-red">0</div>
+                    </div>
+                </div>
+
+                <div class="profile-charts-grid">
+                    <div class="sub-card center-flex">
+                        <div id="md-win-rate-pie"></div>
+                    </div>
+                    <div class="sub-card">
+                        <div class="chart-sub-title">最近 10 場積分走勢</div>
+                        <div id="md-trend-chart" class="trend-chart-box"></div>
+                    </div>
+                </div>
+
+                <div class="profile-footer">
+                    <div>
+                        <span class="member-detail-label">雙打勝場最多拍檔</span>
+                        <div id="md-best-partner" class="best-partner-val"></div>
+                    </div>
+                    <button class="btn btn-danger-outline" id="md-delete-btn">刪除球員</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- B. 新增會員 Modal -->
+    <div class="modal-overlay" id="add-member-modal">
+        <div class="surface-card modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">新增俱樂部會員</h3>
+                <button class="modal-close-btn" onclick="closeModal('add-member-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="subtab-bar" style="margin-bottom:16px;">
+                    <button class="subtab-btn active" id="btn-add-single-tab">單個新增</button>
+                    <button class="subtab-btn" id="btn-add-bulk-tab">批次貼上姓名</button>
+                </div>
+
+                <div id="add-single-mode-container">
+                    <div class="avatar-preview-wrap">
+                        <div class="avatar profile-avatar" id="add-preview-avatar">新</div>
+                        <span class="setting-desc" style="margin:0;">代表頭像色系預覽</span>
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label" for="add-mname">球員姓名</label>
+                        <input type="text" class="form-control" id="add-mname" placeholder="請輸入姓名 (如：王大明)">
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label" for="add-mhue">頭像色彩設定</label>
+                        <div class="hue-bar">
+                            <input type="range" class="hue-slider" id="add-mhue" min="0" max="360" value="175">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="add-bulk-mode-container" style="display:none;">
+                    <div class="setting-group">
+                        <label class="setting-label" for="add-mbulk-names">批次貼上會員姓名（每行一個）</label>
+                        <textarea class="form-control" id="add-mbulk-names" rows="6" placeholder="王大明&#10;陳小華&#10;林志明"></textarea>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label class="setting-label" for="add-mrating">初始 Elo 積分</label>
+                    <input type="number" class="form-control" id="add-mrating" min="0" max="3000" value="1200">
+                    <span class="setting-desc">新成員預設 1200 分（L7 中級一階）。</span>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal('add-member-modal')">取消</button>
+                    <button class="btn btn-primary" id="btn-submit-add-member">確認建立會員</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- C. 等級變動通知 Overlay -->
+    <div class="glow-alert-overlay" id="level-alert-overlay">
+        <div class="surface-card glow-alert-card up" id="level-alert-card">
+            <div class="alert-kicker">等級變動公告</div>
+            <h3 class="glow-alert-title"><span id="alert-pname"></span> <span id="alert-title">恭喜升級</span></h3>
+            <p class="glow-alert-desc" id="alert-desc"></p>
+            <div class="glow-alert-level-box">
+                <div class="glow-alert-level-badge" id="alert-badge-old">L7</div>
+                <div class="glow-alert-arrow">→</div>
+                <div class="glow-alert-level-badge" id="alert-badge-new">L6</div>
+            </div>
+            <button class="btn btn-primary btn-full" id="alert-close-btn">知道了</button>
+        </div>
+    </div>
+
+    <!-- D. K 值與期望值計算說明 Modal -->
+    <div class="modal-overlay" id="k-guide-modal">
+        <div class="surface-card modal-container large">
+            <div class="modal-header">
+                <h3 class="modal-title">Elo 期望值與 K 值計算說明</h3>
+                <button class="modal-close-btn" onclick="closeModal('k-guide-modal')">✕</button>
+            </div>
+            <div class="modal-body guide-body">
+                <p><strong>模式 A（個人期望值權重制）計算原理：</strong></p>
+                <div class="guide-block">
+                    <div class="guide-block-title">1. 個人期望勝率公式</div>
+                    <code>期望勝率 (E) = 1 / (1 + 10^((對手平均積分 - 自己積分) / 400))</code>
+                    <ul>
+                        <li>雙方實力平手時，期望勝率各為 50% (0.5)。</li>
+                        <li>比對手平均高 200 分時，期望勝率約 76%；低 200 分時約 24%。</li>
+                    </ul>
+                </div>
+                <div class="guide-block">
+                    <div class="guide-block-title">2. K 值與積分增減</div>
+                    <code>積分變動 = round(K * (實際勝負結果 - 期望勝率))</code>
+                    <ul>
+                        <li>贏球為 1、輸球為 0；K 值預設 32，代表單場最大加減分上限。</li>
+                        <li>強手帶弱手贏球時，弱手加較多分、強手小幅加分，有效防範抱分。</li>
+                    </ul>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="closeModal('k-guide-modal')">我知道了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- E. 單日積分日報表 Modal -->
+    <div class="modal-overlay" id="daily-report-modal">
+        <div class="surface-card modal-container xlarge">
+            <div class="modal-header no-print">
+                <h3 class="modal-title">產生單日積分日報表</h3>
+                <button class="modal-close-btn" onclick="closeModal('daily-report-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="no-print report-toolbar">
+                    <div class="inline-field">
+                        <span class="setting-label" style="margin:0;">選擇對戰日期</span>
+                        <select class="select-filter" id="rep-date-select"></select>
+                    </div>
+                    <div class="report-toolbar-actions">
+                        <button class="btn btn-primary" id="btn-print-report">列印 / 儲存 PDF</button>
+                        <button class="btn btn-secondary" id="btn-export-report-csv">匯出 CSV</button>
+                    </div>
+                </div>
+                <div id="print-report-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- F. 站內通用確認 / 提示對話框 Modal -->
+    <div class="modal-overlay" id="app-dialog-modal">
+        <div class="surface-card modal-container small">
+            <div class="modal-header">
+                <h3 class="modal-title" id="app-dialog-title">系統提示</h3>
+                <button class="modal-close-btn" id="app-dialog-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="app-dialog-message" class="dialog-message"></p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="app-dialog-cancel">取消</button>
+                    <button class="btn btn-primary" id="app-dialog-confirm">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- G. 幹部線上唯讀版密碼鎖 Overlay -->
+    <div class="readonly-lock-overlay" id="readonly-lock-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="readonly-lock-title">
+        <div class="surface-card readonly-lock-card">
+            <div class="readonly-lock-head">
+                <span class="readonly-badge">幹部唯讀版</span>
+                <span class="readonly-updated-tag" id="readonly-lock-updated">資料載入中...</span>
+            </div>
+            <h2 class="readonly-lock-title" id="readonly-lock-title">朝友桌球分級系統</h2>
+            <p class="readonly-lock-desc">請輸入幹部查詢密碼以檢視最新積分排行、會員名冊與歷史賽事紀錄。</p>
+            <form id="readonly-unlock-form" class="readonly-lock-form">
+                <div class="setting-group">
+                    <label class="setting-label" for="readonly-password-input">幹部密碼</label>
+                    <div class="readonly-pw-row">
+                        <input type="password" class="form-control" id="readonly-password-input" autocomplete="current-password" placeholder="請輸入幹部查詢密碼" required>
+                        <button type="button" class="btn btn-secondary readonly-pw-toggle" id="btn-toggle-readonly-pw">顯示</button>
+                    </div>
+                </div>
+                <label class="readonly-remember-row">
+                    <input type="checkbox" id="readonly-remember-checkbox" checked>
+                    <span>在這支手機記住密碼（可隨時點擊上方「上鎖」清除）</span>
+                </label>
+                <div class="readonly-lock-error" id="readonly-lock-error" role="alert" style="display:none;"></div>
+                <button type="submit" class="btn btn-primary btn-full" id="btn-readonly-unlock">解鎖查看積分</button>
+            </form>
+            <p class="readonly-lock-footnote">資料採用 AES-256-GCM 加密保護，解密僅在您的瀏覽器本機進行、不留存明文。</p>
+        </div>
+    </div>
+
+    <!-- 傳統 script 依序載入，確保 file:// 免伺服器雙擊相容 -->
+    <script defer src="js/utils.js"></script>
+    <script defer src="js/crypto_readonly.js"></script>
+    <script defer src="js/state.js"></script>
+    <script defer src="js/elo.js"></script>
+    <script defer src="js/batch.js"></script>
+    <script defer src="js/charts.js"></script>
+    <script defer src="js/report.js"></script>
+    <script defer src="js/app.js"></script>
+</body>
+</html>
